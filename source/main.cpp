@@ -119,7 +119,7 @@ int main()
     // setup file
     //todo add a thingy for selecting which file to open from a menu.
     
-    consoleDebugInit(DebugDevice_NOCASH);
+    //consoleDebugInit(DebugDevice_NOCASH);
     fatInitDefault();
     FILE* file = fopen("fat:/dump0.fd", "rb");
 
@@ -127,6 +127,15 @@ int main()
     {
         nitroFSInit(NULL);
         file = fopen("nitro:/dump0.fd", "rb");
+        if (file == nullptr)
+        {
+            consoleDemoInit();
+            printf("Unable to load frame dump.\n\nPress Power to exit.");
+            while (true)
+            {
+                swiWaitForVBlank();
+            }
+        }
     }
 
     // init variables
@@ -149,7 +158,7 @@ int main()
     fread(&fogcolor, 4, 1, file);
 
     fread(&fogoffset_mask, 4, 1, file);
-    fread(&fogcolor, 4, 1, file);
+    fread(&fogoffset, 4, 1, file);
 
     fread(fogtable_mask, 4, 32, file);
     fread(fogtable, 4, 32, file);
@@ -269,7 +278,6 @@ int main()
     fread(lightvecvecmtx, 4, 4*16, file);
 
     fread(&lightcolor_mask, 1, 1, file);
-    fprintf(stderr, "%li-\n", ftell(file));
     fread(lightcolor, 4, 4, file);
 
     fread(&swapbuffer_mask, 4, 1, file);
@@ -277,7 +285,6 @@ int main()
 
     videoSetMode(MODE_0_3D);
     powerOn(POWER_3D_CORE | POWER_MATRIX);
-    //glInit();
 
     // turn vram on and set to lcdc mode for easy writing
     u8 vramcontrol[10];
@@ -369,6 +376,7 @@ int main()
         GFX_EDGE_TABLE[i] = edgecolor[i] & edgecolor_mask[i];
 
     GFX_ALPHA_TEST = alphatest & alphatest_mask;
+    GFX_CLEAR_COLOR = clearcolor & clearcolor_mask;
     (*(vu32*)0x04000354) = cleardepoff & cleardepoff_mask;
     GFX_FOG_COLOR = fogcolor & fogcolor_mask;
     GFX_FOG_OFFSET = fogoffset & fogoffset_mask;
@@ -435,9 +443,8 @@ int main()
         for (int j = 0; j < 16; j++)
             MATRIX_LOAD4x4 = lightvecvecmtx[i][j] & lightvecvecmtx_mask[i][j];
 
-        if ((lightvec_mask >> i) & 0x1) GFX_LIGHT_VECTOR = lightvec[i];
-        if ((lightcolor_mask >> i) & 0x1) GFX_LIGHT_COLOR = lightcolor[i];
-        fprintf(stderr, "%li-\n", lightcolor[i]);
+        if ((lightvec_mask) & (0x1<<i)) GFX_LIGHT_VECTOR = lightvec[i];
+        if ((lightcolor_mask) & (0x1<<i)) GFX_LIGHT_COLOR = lightcolor[i];
     }
     
 
@@ -533,11 +540,8 @@ int main()
     GFX_POLY_FORMAT = polyattrunset & polyattrunset_mask;
 
     GFX_FLUSH = swapbuffer & swapbuffer_mask;
-    //fprintf(stderr, "%li\n", ftell(file));
-    //fseek(file, 0xA6741, SEEK_SET);
     fread(&numcmds, 4, 1, file);
 
-    //fprintf(stderr, "%li\n", numcmds);
     swiWaitForVBlank();
 
     // re-run gx commands
@@ -546,10 +550,9 @@ int main()
         u32 addr = 0x04000000;
         u16 addr2;
         fread(&addr2, 2, 1, file);
-        //fprintf(stderr, "%i\n", addr2);
         if (((addr2 >= 0x400 && addr2 < 0x600) || addr2 == 0x610));
         else break; // if an invalid address is entered ABORT.
-        if (addr2 >= 0x5C0 && addr2 <= 0x5C8) continue; // skip doing tests
+        if (addr2 >= 0x5C0 && addr2 <= 0x5C8) continue; // skip doing test cmds
         vu32* finaladdr = (vu32*)(addr | addr2);
 
         u32 param;
