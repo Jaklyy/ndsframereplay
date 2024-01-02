@@ -7,104 +7,87 @@
 
 // file structure:
 
+// misc bits
+// note: the order of these bits is not always the same as the order of the variables in the file (might change this later)
+// also note: some of these regs have more bits than used, they can(?) be written to but they dont do anything(?), so we'll just ignore them to save on file size
+u8 bits1; // 0 disp3dcnt; 1 alpha test; 2-3 clear color low/hi; 4 clear dep; 5 clear offset; 6-7 fog color low/hi;
+u8 bits2; // 0 fog offset; 1 zero dot disp; 2 polyattr; 3 unset polyattr; 4-5 vtxcolor type; 6 vtxcolor; 7 viewport;
+u8 bits3; // 0 matrixmode; 1 normal; 2 nordifamb; 3 norspecemis; 4 nortexparam; 5 polygon; 6 vtx; 7 texcoord;
+u8 bits4; // 0-3 norligvec; 4-7 norligcol;
+u8 bits5; // 0 texparam; 1 texpalette; 2 diffambi; 3 specemis; 4 norpolyattr;
+u8 bits6; // 0-3 lightvector; 4-7 lightcolor;
+u16 edgecolor_mask;
+u8 fogtable_mask[4];
+u8 toontable_mask[8];
+u16 projstack_mask; // can matrixes even be partially defined? what even happens when you do that?
+u16 posstack_mask[32];
+u16 vecstack_mask[32];
+u16 texstack_mask;
+u16 projmtx_mask;
+u16 posmtx_mask;
+u16 vecmtx_mask;
+u16 texmtx_mask;
+u16 normtexmtx_mask;
+u16 normvecmtx_mask;
+u32 normshininess_mask;
+u16 normlightvecvecmtx_mask[4];
+u32 shininess_mask;
+u16 lightvecvecmtx_mask[4];
+
 // global variables:
-u32 disp3dcnt_mask;
-u32 disp3dcnt;
-u32 edgecolor_mask[8];
-u32 edgecolor[8];
-u32 alphatest_mask;
-u32 alphatest;
-u32 clearcolor_mask;
+// should be saved when registers are latched (ie. right before rendering)
+u16 disp3dcnt;
+u16 edgecolor[8];
+u8 alphatest;
 u32 clearcolor;
-u32 cleardepoff_mask;
 u32 cleardepoff;
-u32 fogcolor_mask;
 u32 fogcolor;
-u32 fogoffset_mask;
-u32 fogoffset;
-u32 fogtable_mask[32];
-u32 fogtable[32];
-u32 toontable_mask[32];
-u32 toontable[32];
+u16 fogoffset;
+u8 fogtable[32];
+u16 toontable[32];
 
 // initial state variables:
-u32 zdotdisp_mask;
-u32 zdotdisp;
-u32 polyattr_mask;
+// should be saved before the first command is sent
+// should we only define the used bits of the command, or the full 32 bits?
+u16 zdotdisp;
 u32 polyattr;
-u32 polyattrunset_mask;
 u32 polyattrunset;
-u32 vtxcolor_mask;
-u32 vtxcolor;
-u8 vtxcolortype;
-u32 viewport_mask;
+u32 vtxcolor; // actually stores a diffuse/ambient cmd if the vtx colors were last set by one
 u32 viewport;
-u32 projstack_mask[16];
 u32 projstack[16];
-u32 posstack_mask[32][16];
 u32 posstack[32][16];
-u32 vecstack_mask[32][16];
 u32 vecstack[32][16];
-u32 texstack_mask[16];
 u32 texstack[16];
-u32 projmtx_mask[16];
 u32 projmtx[16];
-u32 posmtx_mask[16];
 u32 posmtx[16];
-u32 vecmtx_mask[16];
 u32 vecmtx[16];
-u32 texmtx_mask[16];
 u32 texmtx[16];
-u32 matrixmode_mask;
 u32 matrixmode;
-u32 normal_mask;
 u32 normal;
-u32 normtexmtx_mask[16];
+u32 normpolyattr;
 u32 normtexmtx[16];
-u32 normvecmtx_mask[16];
 u32 normvecmtx[16];
-u32 normdiffambi_mask;
 u32 normdiffambi;
-u32 normspecemis_mask;
 u32 normspecemis;
-u32 normtexparams_mask;
 u32 normtexparams;
-u32 normshininess_mask[32];
 u32 normshininess[32];
-u8 normlightcolor_mask;
-u32 normlightcolor[4];
-u8 normlightvec_mask;
 u32 normlightvec[4];
-u32 normlightvecvecmtx_mask[4][16];
 u32 normlightvecvecmtx[4][16];
-u32 polygon_mask;
+u32 normlightcolor[4];
 u32 polygon;
-u32 vtxx_mask;
-u32 vtxx;
-u32 vtxy_mask;
-u32 vtxy;
-u32 vtxz_mask;
-u32 vtxz;
-u32 texcoord_mask;
+u16 vtxx;
+u16 vtxy;
+u16 vtxz;
 u32 texcoord;
-u32 texparams_mask;
 u32 texparams;
-u32 texpalette_mask;
 u32 texpalette;
-u32 diffambi_mask;
 u32 diffambi;
-u32 specemis_mask;
 u32 specemis;
-u32 shininess_mask[32];
 u32 shininess[32];
-u8 lightvec_mask;
 u32 lightvec[4];
-u32 lightvecvecmtx_mask[4][16];
 u32 lightvecvecmtx[4][16];
-u8 lightcolor_mask;
 u32 lightcolor[4];
-u32 swapbuffer_mask;
-u32 swapbuffer;
+u32 swapbuffer; // has no mask because it has to occur for 3d rendering to take place
 // vram state:
 // 656 KB of vram state :DDDDD (i am not storing masks for these unless i have good reason to)
 
@@ -119,7 +102,8 @@ int main()
     // setup file
     //todo add a thingy for selecting which file to open from a menu.
     
-    //consoleDebugInit(DebugDevice_NOCASH);
+    consoleDebugInit(DebugDevice_NOCASH);
+    fprintf(stderr, "test0\n");
     fatInitDefault();
     FILE* file = fopen("fat:/dump0.fd", "rb");
 
@@ -138,151 +122,86 @@ int main()
         }
     }
 
-    // init variables
-    fread(&disp3dcnt_mask, 4, 1, file);
-    fread(&disp3dcnt, 4, 1, file);
-
-    fread(edgecolor_mask, 4, 8, file);
-    fread(edgecolor, 4, 8, file);
-
-    fread(&alphatest_mask, 4, 1, file);
-    fread(&alphatest, 4, 1, file);
-
-    fread(&clearcolor_mask, 4, 1, file);
-    fread(&clearcolor, 4, 1, file);
-
-    fread(&cleardepoff_mask, 4, 1, file);
-    fread(&cleardepoff, 4, 1, file);
-
-    fread(&fogcolor_mask, 4, 1, file);
-    fread(&fogcolor, 4, 1, file);
-
-    fread(&fogoffset_mask, 4, 1, file);
-    fread(&fogoffset, 4, 1, file);
-
-    fread(fogtable_mask, 4, 32, file);
-    fread(fogtable, 4, 32, file);
-
-    fread(toontable_mask, 4, 32, file);
-    fread(toontable, 4, 32, file);
-
-
-    fread(&zdotdisp_mask, 4, 1, file);
-    fread(&zdotdisp, 4, 1, file);
-
-    fread(&polyattr_mask, 4, 1, file);
-    fread(&polyattr, 4, 1, file);
-
-    fread(&polyattrunset_mask, 4, 1, file);
-    fread(&polyattrunset, 4, 1, file);
-
-    fread(&vtxcolor_mask, 4, 1, file);
-    fread(&vtxcolor, 4, 1, file);
-
-    fread(&vtxcolortype, 1, 1, file);
-
-    fread(&viewport_mask, 4, 1, file);
-    fread(&viewport, 4, 1, file);
-
-    fread(projstack_mask, 4, 16, file);
-    fread(projstack, 4, 16, file);
-
-    fread(posstack_mask, 4, 512, file);
-    fread(posstack, 4, 512, file);
-
-    fread(vecstack_mask, 4, 512, file);
-    fread(vecstack, 4, 512, file);
-
-    fread(texstack_mask, 4, 16, file);
-    fread(texstack, 4, 16, file);
-
-    fread(projmtx_mask, 4, 16, file);
-    fread(projmtx, 4, 16, file);
-
-    fread(posmtx_mask, 4, 16, file);
-    fread(posmtx, 4, 16, file);
-
-    fread(vecmtx_mask, 4, 16, file);
-    fread(vecmtx, 4, 16, file);
-
-    fread(texmtx_mask, 4, 16, file);
-    fread(texmtx, 4, 16, file);
-
-    fread(&matrixmode_mask, 4, 1, file);
-    fread(&matrixmode, 4, 1, file);
-
-    fread(&normal_mask, 4, 1, file);
-    fread(&normal, 4, 1, file);
-
-    fread(normtexmtx_mask, 4, 16, file);
-    fread(normtexmtx, 4, 16, file);
-
-    fread(normvecmtx_mask, 4, 16, file);
-    fread(normvecmtx, 4, 16, file);
-
-    fread(&normdiffambi_mask, 4, 1, file);
-    fread(&normdiffambi, 4, 1, file);
-
-    fread(&normspecemis_mask, 4, 1, file);
-    fread(&normspecemis, 4, 1, file);
-
-    fread(&normtexparams_mask, 4, 1, file);
-    fread(&normtexparams, 4, 1, file);
+    fprintf(stderr, "test1\n");
     
-    fread(normshininess_mask, 4, 32, file);
-    fread(normshininess, 4, 32, file);
+    fprintf(stderr, "%li-\n", ftell(file));
+    // init variables
+    fread(&bits1, 1, sizeof(bits1), file);
+    fread(&bits2, 1, sizeof(bits2), file);
+    fread(&bits3, 1, sizeof(bits3), file);
+    fread(&bits4, 1, sizeof(bits4), file);
+    fread(&bits5, 1, sizeof(bits5), file);
+    fread(&bits6, 1, sizeof(bits6), file);
+    fread(&edgecolor_mask, 1, sizeof(edgecolor_mask), file);
+    fread(fogtable_mask, 1, sizeof(fogtable_mask), file);
+    fread(toontable_mask, 1, sizeof(toontable_mask), file);
+    fread(&projstack_mask, 1, sizeof(projstack_mask), file);
+    fread(posstack_mask, 1, sizeof(posstack_mask), file);
+    fread(vecstack_mask, 1, sizeof(vecstack_mask), file);
+    fread(&texstack_mask, 1, sizeof(texstack_mask), file);
+    fread(&projmtx_mask, 1, sizeof(projmtx_mask), file);
+    fread(&posmtx_mask, 1, sizeof(posmtx_mask), file);
+    fread(&vecmtx_mask, 1, sizeof(vecmtx_mask), file);
+    fread(&texmtx_mask, 1, sizeof(texmtx_mask), file);
+    fread(&normtexmtx_mask, 1, sizeof(normtexmtx_mask), file);
+    fread(&normvecmtx_mask, 1, sizeof(normvecmtx_mask), file);
+    fread(&normshininess_mask, 1, sizeof(normshininess_mask), file);
+    fread(normlightvecvecmtx_mask, 1, sizeof(normlightvecvecmtx_mask), file);
+    fread(&shininess_mask, 1, sizeof(shininess_mask), file);
+    fread(lightvecvecmtx_mask, 1, sizeof(lightvecvecmtx_mask), file);
 
-    fread(&normlightcolor_mask, 1, 1, file);
-    fread(normlightcolor, 4, 4, file);
+    fprintf(stderr, "test2\n");
+    fread(&disp3dcnt, 1, sizeof(disp3dcnt), file);
+    fread(edgecolor, 1, sizeof(edgecolor), file);
+    fread(&alphatest, 1, sizeof(alphatest), file);
+    fread(&clearcolor, 1, sizeof(clearcolor), file);
+    fread(&cleardepoff, 1, sizeof(cleardepoff), file);
+    fread(&fogcolor, 1, sizeof(fogcolor), file);
+    fread(&fogoffset, 1, sizeof(fogoffset), file);
+    fread(fogtable, 1, sizeof(fogtable), file);
+    fread(toontable, 1, sizeof(toontable), file);
 
-    fread(&normlightvec_mask, 1, 1, file);
-    fread(normlightvec, 4, 4, file);
+    fread(&zdotdisp, 1, sizeof(zdotdisp), file);
+    fread(&polyattr, 1, sizeof(polyattr), file);
+    fread(&polyattrunset, 1, sizeof(polyattrunset), file);
+    fread(&vtxcolor, 1, sizeof(vtxcolor), file);
+    fread(&viewport, 1, sizeof(viewport), file);
+    fread(projstack, 1, sizeof(projstack), file);
+    fread(posstack, 1, sizeof(posstack), file);
+    fread(vecstack, 1, sizeof(vecstack), file);
+    fread(texstack, 1, sizeof(texstack), file);
+    fread(projmtx, 1, sizeof(projmtx), file);
+    fread(posmtx, 1, sizeof(posmtx), file);
+    fread(vecmtx, 1, sizeof(vecmtx), file);
+    fread(texmtx, 1, sizeof(texmtx), file);
+    fread(&matrixmode, 1, sizeof(matrixmode), file);
+    fread(&normal, 1, sizeof(normal), file);
+    fread(&normpolyattr, 1, sizeof(normpolyattr), file);
+    fread(normtexmtx, 1, sizeof(normtexmtx), file);
+    fread(normvecmtx, 1, sizeof(normvecmtx), file);
+    fread(&normdiffambi, 1, sizeof(normdiffambi), file);
+    fread(&normspecemis, 1, sizeof(normspecemis), file);
+    fread(&normtexparams, 1, sizeof(normtexparams), file);
+    fread(normshininess, 1, sizeof(normshininess), file);
+    fread(normlightvec, 1, sizeof(normlightvec), file);
+    fread(normlightvecvecmtx, 1, sizeof(normlightvecvecmtx), file);
+    fread(normlightcolor, 1, sizeof(normlightcolor), file);
+    fread(&polygon, 1, sizeof(polygon), file);
+    fread(&vtxx, 1, sizeof(vtxx), file);
+    fread(&vtxy, 1, sizeof(vtxy), file);
+    fread(&vtxz, 1, sizeof(vtxz), file);
+    fread(&texcoord, 1, sizeof(texcoord), file);
+    fread(&texparams, 1, sizeof(texparams), file);
+    fread(&texpalette, 1, sizeof(texpalette), file);
+    fread(&diffambi, 1, sizeof(diffambi), file);
+    fread(&specemis, 1, sizeof(specemis), file);
+    fread(shininess, 1, sizeof(shininess), file);
+    fread(lightvec, 1, sizeof(lightvec), file);
+    fread(lightvecvecmtx, 1, sizeof(lightvecvecmtx), file);
+    fread(lightcolor, 1, sizeof(lightcolor), file);
+    fread(&swapbuffer, 1, sizeof(swapbuffer), file);
 
-    fread(normlightvecvecmtx_mask, 4, 4*16, file);
-    fread(normlightvecvecmtx, 4, 4*16, file);
-
-    fread(&polygon_mask, 4, 1, file);
-    fread(&polygon, 4, 1, file);
-
-    fread(&vtxx_mask, 4, 1, file);
-    fread(&vtxx, 4, 1, file);
-
-    fread(&vtxy_mask, 4, 1, file);
-    fread(&vtxy, 4, 1, file);
-
-    fread(&vtxz_mask, 4, 1, file);
-    fread(&vtxz, 4, 1, file);
-
-    fread(&texcoord_mask, 4, 1, file);
-    fread(&texcoord, 4, 1, file);
-
-    fread(&texparams_mask, 4, 1, file);
-    fread(&texparams, 4, 1, file);
-
-    fread(&texpalette_mask, 4, 1, file);
-    fread(&texpalette, 4, 1, file);
-
-    fread(&diffambi_mask, 4, 1, file);
-    fread(&diffambi, 4, 1, file);
-
-    fread(&specemis_mask, 4, 1, file);
-    fread(&specemis, 4, 1, file);
-
-    fread(shininess_mask, 4, 32, file);
-    fread(shininess, 4, 32, file);
-
-    fread(&lightvec_mask, 1, 1, file);
-    fread(lightvec, 4, 4, file);
-
-    fread(lightvecvecmtx_mask, 4, 4*16, file);
-    fread(lightvecvecmtx, 4, 4*16, file);
-
-    fread(&lightcolor_mask, 1, 1, file);
-    fread(lightcolor, 4, 4, file);
-
-    fread(&swapbuffer_mask, 4, 1, file);
-    fread(&swapbuffer, 4, 1, file);
-
+    fprintf(stderr, "%li-\n", ftell(file));
     videoSetMode(MODE_0_3D);
     powerOn(POWER_3D_CORE | POWER_MATRIX);
 
@@ -290,21 +209,24 @@ int main()
     u8 vramcontrol[10];
     for (int i = 0; i < 10; i++)
     {
-        if (i == 7) i++;
+        if (i == 7) i++; // skip wramcnt
         fread(&vramcontrol[i], 1, 1, file);
-        vu8* address = ((vu8*)0x04000240 + i);
-        *address = 0b10000000;
+        vu8* address = (vu8*)((0x04000240 + i)); // vramcnt_a address
+        *address = VRAM_ENABLE;
     }
 
+    fprintf(stderr, "%li-\n", ftell(file));
     // init vram banks
     // A
+    if (vramcontrol[0] & VRAM_ENABLE)
     for (int i = 0; i < 128 * 1024; i += 4)
     {
         u32 vrambuffer;
         fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x6800000)[i/4] = vrambuffer;
+        ((u32*)0x6800000)[i/4] = vrambuffer; // vram a lcdc address
     }
     // B
+    if (vramcontrol[1] & VRAM_ENABLE)
     for (int i = 0; i < 128 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -312,6 +234,7 @@ int main()
         ((u32*)0x6820000)[i/4] = vrambuffer;
     }
     // C
+    if (vramcontrol[2] & VRAM_ENABLE)
     for (int i = 0; i < 128 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -319,6 +242,7 @@ int main()
         ((u32*)0x6840000)[i/4] = vrambuffer;
     }
     // D
+    if (vramcontrol[3] & VRAM_ENABLE)
     for (int i = 0; i < 128 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -326,6 +250,7 @@ int main()
         ((u32*)0x6860000)[i/4] = vrambuffer;
     }
     // E
+    if (vramcontrol[4] & VRAM_ENABLE)
     for (int i = 0; i < 64 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -333,6 +258,7 @@ int main()
         ((u32*)0x6880000)[i/4] = vrambuffer;
     }
     // F
+    if (vramcontrol[5] & VRAM_ENABLE)
     for (int i = 0; i < 16 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -340,6 +266,7 @@ int main()
         ((u32*)0x6890000)[i/4] = vrambuffer;
     }
     // G
+    if (vramcontrol[6] & VRAM_ENABLE)
     for (int i = 0; i < 16 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -348,6 +275,7 @@ int main()
     }
     // skip wram because idk if it's useful for this.
     // H
+    if (vramcontrol[8] & VRAM_ENABLE)
     for (int i = 0; i < 32 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -355,208 +283,282 @@ int main()
         ((u32*)0x6898000)[i/4] = vrambuffer;
     }
     // I
+    if (vramcontrol[9] & VRAM_ENABLE)
     for (int i = 0; i < 16 * 1024; i += 4)
     {
         u32 vrambuffer;
         fread(&vrambuffer, 4, 1, file);
         ((u32*)0x68A0000)[i/4] = vrambuffer;
     }
+    fprintf(stderr, "%li-\n", ftell(file));
     // actually init vramcnt
     for (int i = 0; i < 10; i++)
     {
         if (i == 7) i++;
-        vu8* address = ((vu8*)0x04000240 + i);
+        vu8* address = ((vu8*)(0x04000240 + i));
         *address = vramcontrol[i];
     }
 
+    fprintf(stderr, "%li-\n", ftell(file));
     // init frame state
-    GFX_CONTROL = disp3dcnt & disp3dcnt_mask;
+    // please ignore the cursed nonsense im trying to do here i swear it makes sense
+    if (bits1 & (1<<0)) GFX_CONTROL = disp3dcnt;
 
-    for (int i = 0; i < 8; i++)
-        GFX_EDGE_TABLE[i] = edgecolor[i] & edgecolor_mask[i];
+    for (int i = 0; i < 16; i+=2)
+    {
+        if (edgecolor_mask & (1<<i)) ((vu8*)0x04000330)[i] = ((u8*)edgecolor)[i];
+        if (edgecolor_mask & (1<<(i+1))) ((vu8*)0x04000330)[i+1] = ((u8*)edgecolor)[i+1];
+    }
 
-    GFX_ALPHA_TEST = alphatest & alphatest_mask;
-    GFX_CLEAR_COLOR = clearcolor & clearcolor_mask;
-    (*(vu32*)0x04000354) = cleardepoff & cleardepoff_mask;
-    GFX_FOG_COLOR = fogcolor & fogcolor_mask;
-    GFX_FOG_OFFSET = fogoffset & fogoffset_mask;
+    if (bits1 & (1<<1)) GFX_ALPHA_TEST = alphatest;
+    if (bits1 & (1<<2)) ((vu16*)0x04000350)[0] = (u16)(clearcolor & 0xFFFF);
+    if (bits1 & (1<<3)) ((vu16*)0x04000350)[1] = (u16)(clearcolor >> 16);
+    if (bits1 & (1<<4)) GFX_CLEAR_DEPTH = cleardepoff & 0xFFFF;
+    if (bits1 & (1<<5)) GFX_CLRIMAGE_OFFSET = cleardepoff >> 16;
+    if (bits1 & (1<<6)) ((vu16*)0x04000358)[0] = fogcolor & 0xFFFF;
+    if (bits1 & (1<<7)) ((vu16*)0x04000358)[1] = fogcolor >> 16;
+    if (bits2 & (1<<0)) GFX_FOG_OFFSET = fogoffset;
 
     for (int i = 0; i < 32; i++)
-        GFX_FOG_TABLE[i] = fogtable[i] & fogtable_mask[i];
-    for (int i = 0; i < 32; i++)
-        GFX_TOON_TABLE[i] = toontable[i] & toontable_mask[i];
+        if (fogtable_mask[i/8] & (1 << (i % 8))) GFX_FOG_TABLE[i] = fogtable[i];
+    for (int i = 0; i < 64; i++)
+        if (toontable_mask[i/8] & (1 << (i % 8))) ((vu8*)0x04000380)[i] = ((u8*)toontable)[i];
 
-    GFX_CUTOFF_DEPTH = zdotdisp & zdotdisp_mask;
-    GFX_POLY_FORMAT = polyattr & polyattr_mask;
-    GFX_VIEWPORT = viewport & viewport_mask;
+    if (bits2 & (1<<1)) GFX_CUTOFF_DEPTH = zdotdisp;
+    if (bits2 & (1<<7)) GFX_VIEWPORT = viewport;
 
 
     // init regs relevant to the normal command
+    if (bits3 & (1<<1))
+    {
+    // init polyattr for normal
+    if (bits5 & (1<<4))
+    {
+        GFX_POLY_FORMAT = normpolyattr;
+        GFX_BEGIN = 0; // dummy begin cmd
+    }
 
     //init lights for normal
-    MATRIX_CONTROL = 2;
+    if ((u64)normlightvecvecmtx_mask) MATRIX_CONTROL = 2;
     for (int i = 0; i < 4; i++)
     {
-        if ((normlightcolor_mask >> i) & 0x1) GFX_LIGHT_COLOR = normlightcolor[i];
         for (int j = 0; j < 16; j++)
-            MATRIX_LOAD4x4 = normlightvecvecmtx[i][j] & normlightvecvecmtx_mask[i][j];
-
-        if ((normlightvec_mask >> i) & 0x1) GFX_LIGHT_VECTOR = normlightvec[i];
+        {
+            if (!(normlightvecvecmtx_mask[i] & (1<<j))) continue;
+            MATRIX_LOAD4x4 = normlightvecvecmtx[i][j];
+        }
+        if ((bits4 >> i) & 0x1) GFX_LIGHT_VECTOR = normlightvec[i];
+        if ((bits4 >> (i+4)) & 0x1) GFX_LIGHT_COLOR = normlightcolor[i];
     }
     // init textures for normal
-    GFX_TEX_FORMAT = normtexparams & normtexparams_mask;
-    MATRIX_CONTROL = 3;
+    if (bits3 & (1<<4)) GFX_TEX_FORMAT = normtexparams;
+    
+    if (normtexmtx_mask) MATRIX_CONTROL = 3;
     for (int i = 0; i < 16; i++)
-        MATRIX_LOAD4x4 = normtexmtx[i] & normtexmtx_mask[i];
+        if (normtexmtx_mask & (1<<i)) MATRIX_LOAD4x4 = normtexmtx[i];
     // init diff/ambi for normal
-    GFX_DIFFUSE_AMBIENT = normdiffambi & normdiffambi_mask;
-    GFX_SPECULAR_EMISSION = normspecemis & normspecemis_mask;
+    if (bits3 & (1<<2)) GFX_DIFFUSE_AMBIENT = normdiffambi;
+    if (bits3 & (1<<3)) GFX_SPECULAR_EMISSION = normspecemis;
 
     // init vector matrix for normal
-    MATRIX_CONTROL = 2;
-    for (int i = 0; i < 16; i++)
-        MATRIX_LOAD4x4 = normvecmtx[i] & normvecmtx_mask[i];
-
+    if (normvecmtx_mask)
+    {
+        MATRIX_CONTROL = 2;
+        for (int i = 0; i < 16; i++)
+            if (normvecmtx_mask & (1<<i)) MATRIX_LOAD4x4 = normvecmtx[i];
+    }
+    
     // init shininess table too for the normal
     for (int i = 0; i < 32; i++)
-        GFX_SHININESS = normshininess[i] & normshininess_mask[i];
+        if (normshininess_mask & (1<<i)) GFX_SHININESS = normshininess[i];
 
     // actually do the normal at long last.
-    GFX_NORMAL = normal & normal_mask;
+    GFX_NORMAL = normal;
+    }
 
+    
+    if (bits2 & (1<<6))
+    {
+        u8 vtxcolortype = ((bits2 >> 4) & 0b11);
+        if (vtxcolortype == 0)
+            GFX_COLOR = vtxcolor;
+        else if (vtxcolortype == 1)
+            GFX_DIFFUSE_AMBIENT = vtxcolor;
+    }
 
-    if (vtxcolortype == 0)
-        GFX_COLOR = vtxcolor & vtxcolor_mask;
-    else if (vtxcolortype == 1)
-        GFX_DIFFUSE_AMBIENT = vtxcolor & vtxcolor_mask;
-
-    GFX_DIFFUSE_AMBIENT = diffambi & diffambi_mask;
-    GFX_SPECULAR_EMISSION = specemis & specemis_mask;
+    if (bits5 & (1<<2)) GFX_DIFFUSE_AMBIENT = diffambi;
+    if (bits5 & (1<<3)) GFX_SPECULAR_EMISSION = specemis;
 
     for (int i = 0; i < 32; i++)
-        GFX_SHININESS = shininess[i] & shininess_mask[i];
+        if (shininess_mask & (1<<i)) GFX_SHININESS = shininess[i];
 
     // init lights
-    MATRIX_CONTROL = 2;
+    if ((u64)lightvecvecmtx_mask) MATRIX_CONTROL = 2;
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 16; j++)
-            MATRIX_LOAD4x4 = lightvecvecmtx[i][j] & lightvecvecmtx_mask[i][j];
+            if (lightvecvecmtx_mask[i] & (1<<j)) MATRIX_LOAD4x4 = lightvecvecmtx[i][j];
 
-        if ((lightvec_mask) & (0x1<<i)) GFX_LIGHT_VECTOR = lightvec[i];
-        if ((lightcolor_mask) & (0x1<<i)) GFX_LIGHT_COLOR = lightcolor[i];
+        if ((bits6) & (1<<i)) GFX_LIGHT_VECTOR = lightvec[i];
+        if ((bits6) & (1<<(i+4))) GFX_LIGHT_COLOR = lightcolor[i];
     }
     
 
     // init matrix stack
-    MATRIX_CONTROL = 0;
-    bool projcheck = false;
-    for (int i = 0; i < 16; i++)
+    
+    if (projstack_mask) 
     {
-        if (projstack_mask[i] == 0) break;
-        else projcheck = 1;
-        MATRIX_LOAD4x4 = projstack[i] & projstack_mask[i];
-    }
-    if (projcheck) MATRIX_STORE = 0; 
+        MATRIX_CONTROL = 0;
+        for (int i = 0; i < 16; i++)
+        {
+            if (!(projstack_mask & (1<<i))) break;
 
+            MATRIX_LOAD4x4 = projstack[i];
+        }
+        MATRIX_STORE = 0; 
+    }
+
+    {
+    bool runpos = false;
+    bool runvec = false;
+    for (int i = 0; i < 32; i++)
+    {
+        if (posstack_mask[i]) runpos = true;
+        if (vecstack_mask[i]) runvec = true;
+    }
+    if (runpos || runvec)
     for (int j = 0; j < 32; j++)
     {
         bool posveccheck = false;
-        MATRIX_CONTROL = 1;
-        for (int i = 0; i < 16; i++)
+
+        if (runpos)
         {
-            if (posstack_mask[j][i] == 0) break;
-            else posveccheck = true;
-            MATRIX_LOAD4x4 = posstack[j][i] & posstack_mask[j][i];
+            MATRIX_CONTROL = 1;
+            for (int i = 0; i < 16; i++)
+            {
+                if (!(posstack_mask[j] & (1<<i))) break;
+
+                posveccheck = true;
+                MATRIX_LOAD4x4 = posstack[j][i];
+            }
         }
-        MATRIX_CONTROL = 2;
-        for (int i = 0; i < 16; i++)
+        if (runvec)
         {
-            if (vecstack_mask[j][i] == 0) break;
-            else posveccheck = true;
-            MATRIX_LOAD4x4 = vecstack[j][i] & vecstack_mask[j][i];
+            MATRIX_CONTROL = 2;
+            for (int i = 0; i < 16; i++)
+            {
+                if (!(vecstack_mask[j] & (1<<i))) break;
+
+                posveccheck = true;
+                MATRIX_LOAD4x4 = vecstack[j][i];
+            }
         }
         if (posveccheck) MATRIX_STORE = j;
     }
-
-    MATRIX_CONTROL = 3;
-    bool texcheck = false;
-    for (int i = 0; i < 16; i++)
-    {
-        if (texstack_mask[i] == 0) break;
-        else texcheck = 1;
-        MATRIX_LOAD4x4 = texstack[i] & texstack_mask[i];
     }
-    if (texcheck) MATRIX_STORE = 0; 
+
+    if (texstack_mask)
+    {
+        MATRIX_CONTROL = 3;
+        for (int i = 0; i < 16; i++)
+        {
+            if (!(texstack_mask & (1<<i))) break;
+
+            MATRIX_LOAD4x4 = texstack[i];
+        }
+        MATRIX_STORE = 0; 
+    }
 
     // init matrices
-    MATRIX_CONTROL = 0;
-    for (int i = 0; i < 16; i++)
+    if (projmtx_mask)
     {
-        if (projmtx_mask[i] == 0) break;
-        MATRIX_LOAD4x4 = projmtx[i] & projmtx_mask[i];
-    }
-    MATRIX_CONTROL = 1;
-    for (int i = 0; i < 16; i++)
-    {
-        if (posmtx_mask[i] == 0) break;
-        MATRIX_LOAD4x4 = posmtx[i] & posmtx_mask[i];
-    }
-    MATRIX_CONTROL = 2;
-    for (int i = 0; i < 16; i++)
-    {
-        if (vecmtx_mask[i] == 0) break;
-        MATRIX_LOAD4x4 = vecmtx[i] & vecmtx_mask[i];
-    }
-    MATRIX_CONTROL = 3;
-    for (int i = 0; i < 16; i++)
-    {
-        if (texmtx_mask[i] == 0) break;
-        MATRIX_LOAD4x4 = texmtx[i] & texmtx_mask[i];
-    }
-    
-    MATRIX_CONTROL = matrixmode & matrixmode_mask;
-    
-    // init polygon engine (that's a term right?)
-    GFX_BEGIN = polygon & polygon_mask;
+        MATRIX_CONTROL = 0;
+        for (int i = 0; i < 16; i++)
+        {
+            if (!(projmtx_mask & (1<<i))) break;
 
-    u8 vtxnum;
-    if (polygon == 0 || polygon == 2) vtxnum = 3;
-    else vtxnum = 4;
+            MATRIX_LOAD4x4 = projmtx[i];
+        }
+    }
+    if (posmtx_mask)
+    {
+        MATRIX_CONTROL = 1;
+        for (int i = 0; i < 16; i++)
+        {
+            if (!(posmtx_mask & (1<<i))) break;
+
+            MATRIX_LOAD4x4 = posmtx[i];
+        }
+    }
+    if (vecmtx_mask)
+    {
+        MATRIX_CONTROL = 2;
+        for (int i = 0; i < 16; i++)
+        {
+            if (!(vecmtx_mask & (1<<i))) break;
+
+            MATRIX_LOAD4x4 = vecmtx[i];
+        }
+    }
+    if (texmtx_mask)
+    {
+        MATRIX_CONTROL = 3;
+        for (int i = 0; i < 16; i++)
+        {
+            if (!(texmtx_mask & (1<<i))) break;
+
+            MATRIX_LOAD4x4 = texmtx[i];
+        }
+    }
+    
+    if (bits3 & (1<<0)) MATRIX_CONTROL = matrixmode;
+    
+    if (bits2 & (1<<2)) GFX_POLY_FORMAT = polyattr;
+    // init polygon engine (that's a term right?)
+    if (bits3 & (1<<5)) GFX_BEGIN = polygon;
 
     // init texture state
-    GFX_TEX_FORMAT = texparams & texparams_mask;
-    GFX_PAL_FORMAT = texpalette & texpalette_mask;
+    if (bits3 & (1<<7)) GFX_TEX_COORD = texcoord;
+    if (bits5 & (1<<0)) GFX_TEX_FORMAT = texparams;
+    if (bits5 & (1<<1)) GFX_PAL_FORMAT = texpalette;
 
     // init some vertices just in case (render an entire polygon because otherwise it actually hangs entirely--)
-    for (int i = 0; i < vtxnum; i++)
+    if (bits3 & (1<<6))
     {
-        GFX_TEX_COORD = texcoord & texcoord_mask;
-        GFX_VERTEX16 = ((u32)(vtxx & vtxx_mask) | ((u32)(vtxy & vtxy_mask) << 16));
-        GFX_VERTEX16 = vtxz & vtxz_mask;
+        u8 vtxnum;
+        if (!(bits3 & (1<<5))) vtxnum = 3; // just pray it defaults to tri otherwise we hang the entire gpu lol
+        if (polygon == 0 || polygon == 2) vtxnum = 3;
+        else vtxnum = 4;
+        for (int i = 0; i < vtxnum; i++)
+        {
+            GFX_VERTEX16 = ((u32)vtxx | ((u32)vtxy << 16));
+            GFX_VERTEX16 = vtxz;
+        }
     }
-    
     // unset polygon format (will be properly set when the next polygon begin cmd gets sent)
-    GFX_POLY_FORMAT = polyattrunset & polyattrunset_mask;
+    if (bits2 & (1<<3)) GFX_POLY_FORMAT = polyattrunset;
 
-    GFX_FLUSH = swapbuffer & swapbuffer_mask;
-    fread(&numcmds, 4, 1, file);
+    GFX_FLUSH = swapbuffer;
 
-    swiWaitForVBlank();
+    fread(&numcmds, 1, sizeof(numcmds), file);
 
-    // re-run gx commands
+    swiWaitForVBlank(); // wait for swap buffer to actually take place
+
+    fprintf(stderr, "%li-nc%li\n", ftell(file), numcmds);
+    // run gx commands
     for (u32 i = 0; i < numcmds; i++)
     {   
         u32 addr = 0x04000000;
         u16 addr2;
-        fread(&addr2, 2, 1, file);
-        if (((addr2 >= 0x400 && addr2 < 0x600) || addr2 == 0x610));
-        else break; // if an invalid address is entered ABORT.
+        fread(&addr2, 1, sizeof(addr2), file);
+
+        if (!((addr2 >= 0x400 && addr2 < 0x600) || addr2 == 0x610)) break; // if an invalid address is entered ABORT.
         if (addr2 >= 0x5C0 && addr2 <= 0x5C8) continue; // skip doing test cmds
+
         vu32* finaladdr = (vu32*)(addr | addr2);
 
         u32 param;
-        fread(&param, 4, 1, file); 
+        fread(&param, 1, sizeof(param), file); 
         *finaladdr = param;
     }
 
