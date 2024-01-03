@@ -75,7 +75,7 @@ u32 normlightvec[4];
 u32 normlightvecvecmtx[4][16];
 u32 normlightcolor[4];
 u32 polygon;
-u16 vtxx;
+u16 vtxx; // i think using only one mask for each vtx cmd is technically wrong actually-- but i dont feel like fixing it.
 u16 vtxy;
 u16 vtxz;
 u32 texcoord;
@@ -88,44 +88,25 @@ u32 lightvec[4];
 u32 lightvecvecmtx[4][16];
 u32 lightcolor[4];
 u32 swapbuffer; // has no mask because it has to occur for 3d rendering to take place
+u8 vramcontrol[7]; // only 7 are actually saved/loaded/used banks h and i are ignored
 // vram state:
-// 656 KB of vram state :DDDDD (i am not storing masks for these unless i have good reason to)
+// (up to) 608 KiB of vram state :DDDDD (i am not storing masks for these unless i have good reason to)
+// note: vram state is ONLY saved/loaded for ACTIVE vram banks (ie. last bit of vramcnt must be set)
 
 // other:
 u32 numcmds;
-// 16 bits for cmd address
-// 32 bits for what the command actually was
+
+// 30000 as a max is just a guess tbh
+// i dont actually know how many commands the gpu can process in one frame at a maximum
+// probably a *lot* more if you really try to
+// this *should* cover most real games though
+u8 cmd[30000];
+u32 param[30000];
 
 
-int main()
+void initVars(FILE* file)
 {
-    // setup file
-    //todo add a thingy for selecting which file to open from a menu.
-    
-    consoleDebugInit(DebugDevice_NOCASH);
-    fprintf(stderr, "test0\n");
-    fatInitDefault();
-    FILE* file = fopen("fat:/dump0.fd", "rb");
-
-    if (file == nullptr) 
-    {
-        nitroFSInit(NULL);
-        file = fopen("nitro:/dump0.fd", "rb");
-        if (file == nullptr)
-        {
-            consoleDemoInit();
-            printf("Unable to load frame dump.\n\nPress Power to exit.");
-            while (true)
-            {
-                swiWaitForVBlank();
-            }
-        }
-    }
-
-    fprintf(stderr, "test1\n");
-    
-    fprintf(stderr, "%li-\n", ftell(file));
-    // init variables
+    // init most variables
     fread(&bits1, 1, sizeof(bits1), file);
     fread(&bits2, 1, sizeof(bits2), file);
     fread(&bits3, 1, sizeof(bits3), file);
@@ -150,7 +131,6 @@ int main()
     fread(&shininess_mask, 1, sizeof(shininess_mask), file);
     fread(lightvecvecmtx_mask, 1, sizeof(lightvecvecmtx_mask), file);
 
-    fprintf(stderr, "test2\n");
     fread(&disp3dcnt, 1, sizeof(disp3dcnt), file);
     fread(edgecolor, 1, sizeof(edgecolor), file);
     fread(&alphatest, 1, sizeof(alphatest), file);
@@ -200,25 +180,21 @@ int main()
     fread(lightvecvecmtx, 1, sizeof(lightvecvecmtx), file);
     fread(lightcolor, 1, sizeof(lightcolor), file);
     fread(&swapbuffer, 1, sizeof(swapbuffer), file);
+}
 
-    fprintf(stderr, "%li-\n", ftell(file));
-    videoSetMode(MODE_0_3D);
-    powerOn(POWER_3D_CORE | POWER_MATRIX);
-
+void initVram(FILE* file)
+{
     // turn vram on and set to lcdc mode for easy writing
-    u8 vramcontrol[10];
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 7; i++)
     {
-        if (i == 7) i++; // skip wramcnt
+        //if (i == 7) i++; // skip wramcnt
         fread(&vramcontrol[i], 1, 1, file);
         vu8* address = (vu8*)((0x04000240 + i)); // vramcnt_a address
         *address = VRAM_ENABLE;
     }
-
-    fprintf(stderr, "%li-\n", ftell(file));
     // init vram banks
     // A
-    if (vramcontrol[0] & VRAM_ENABLE)
+    if ((vramcontrol[0] & 0x83) == 0x83)
     for (int i = 0; i < 128 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -226,7 +202,7 @@ int main()
         ((u32*)0x6800000)[i/4] = vrambuffer; // vram a lcdc address
     }
     // B
-    if (vramcontrol[1] & VRAM_ENABLE)
+    if ((vramcontrol[1] & 0x83) == 0x83)
     for (int i = 0; i < 128 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -234,7 +210,7 @@ int main()
         ((u32*)0x6820000)[i/4] = vrambuffer;
     }
     // C
-    if (vramcontrol[2] & VRAM_ENABLE)
+    if ((vramcontrol[2] & 0x87) == 0x83)
     for (int i = 0; i < 128 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -242,7 +218,7 @@ int main()
         ((u32*)0x6840000)[i/4] = vrambuffer;
     }
     // D
-    if (vramcontrol[3] & VRAM_ENABLE)
+    if ((vramcontrol[3] & 0x87) == 0x83)
     for (int i = 0; i < 128 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -250,7 +226,7 @@ int main()
         ((u32*)0x6860000)[i/4] = vrambuffer;
     }
     // E
-    if (vramcontrol[4] & VRAM_ENABLE)
+    if ((vramcontrol[4] & 0x87) == 0x83)
     for (int i = 0; i < 64 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -258,7 +234,7 @@ int main()
         ((u32*)0x6880000)[i/4] = vrambuffer;
     }
     // F
-    if (vramcontrol[5] & VRAM_ENABLE)
+    if ((vramcontrol[5] & 0x87) == 0x83)
     for (int i = 0; i < 16 * 1024; i += 4)
     {
         u32 vrambuffer;
@@ -266,118 +242,105 @@ int main()
         ((u32*)0x6890000)[i/4] = vrambuffer;
     }
     // G
-    if (vramcontrol[6] & VRAM_ENABLE)
+    if ((vramcontrol[6] & 0x87) == 0x83)
     for (int i = 0; i < 16 * 1024; i += 4)
     {
         u32 vrambuffer;
         fread(&vrambuffer, 4, 1, file);
         ((u32*)0x6894000)[i/4] = vrambuffer;
     }
-    // skip wram because idk if it's useful for this.
-    // H
-    if (vramcontrol[8] & VRAM_ENABLE)
-    for (int i = 0; i < 32 * 1024; i += 4)
-    {
-        u32 vrambuffer;
-        fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x6898000)[i/4] = vrambuffer;
-    }
-    // I
-    if (vramcontrol[9] & VRAM_ENABLE)
-    for (int i = 0; i < 16 * 1024; i += 4)
-    {
-        u32 vrambuffer;
-        fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x68A0000)[i/4] = vrambuffer;
-    }
-    fprintf(stderr, "%li-\n", ftell(file));
+    // ignore H & I because irrelevant to 3d gfx
+
     // actually init vramcnt
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < 7; i++)
     {
-        if (i == 7) i++;
+        //if (i == 7) i++;
         vu8* address = ((vu8*)(0x04000240 + i));
         *address = vramcontrol[i];
     }
+}
 
-    fprintf(stderr, "%li-\n", ftell(file));
+void initFrameState(bool trustemudefaultstate)
+{
+    bool t = trustemudefaultstate; // i really did not wanna type that out tbh
     // init frame state
     // please ignore the cursed nonsense im trying to do here i swear it makes sense
-    if (bits1 & (1<<0)) GFX_CONTROL = disp3dcnt;
+    if (bits1 & (1<<0) || t) GFX_CONTROL = disp3dcnt;
 
     for (int i = 0; i < 16; i+=2)
     {
-        if (edgecolor_mask & (1<<i)) ((vu8*)0x04000330)[i] = ((u8*)edgecolor)[i];
-        if (edgecolor_mask & (1<<(i+1))) ((vu8*)0x04000330)[i+1] = ((u8*)edgecolor)[i+1];
+        if (edgecolor_mask & (1<<i) || t) ((vu8*)0x04000330)[i] = ((u8*)edgecolor)[i];
+        if (edgecolor_mask & (1<<(i+1)) || t) ((vu8*)0x04000330)[i+1] = ((u8*)edgecolor)[i+1];
     }
 
-    if (bits1 & (1<<1)) GFX_ALPHA_TEST = alphatest;
-    if (bits1 & (1<<2)) ((vu16*)0x04000350)[0] = (u16)(clearcolor & 0xFFFF);
-    if (bits1 & (1<<3)) ((vu16*)0x04000350)[1] = (u16)(clearcolor >> 16);
-    if (bits1 & (1<<4)) GFX_CLEAR_DEPTH = cleardepoff & 0xFFFF;
-    if (bits1 & (1<<5)) GFX_CLRIMAGE_OFFSET = cleardepoff >> 16;
-    if (bits1 & (1<<6)) ((vu16*)0x04000358)[0] = fogcolor & 0xFFFF;
-    if (bits1 & (1<<7)) ((vu16*)0x04000358)[1] = fogcolor >> 16;
-    if (bits2 & (1<<0)) GFX_FOG_OFFSET = fogoffset;
+    if (bits1 & (1<<1) || t) GFX_ALPHA_TEST = alphatest;
+    if (bits1 & (1<<2) || t) ((vu16*)0x04000350)[0] = (u16)(clearcolor & 0xFFFF);
+    if (bits1 & (1<<3) || t) ((vu16*)0x04000350)[1] = (u16)(clearcolor >> 16);
+    if (bits1 & (1<<4) || t) GFX_CLEAR_DEPTH = cleardepoff & 0xFFFF;
+    if (bits1 & (1<<5) || t) GFX_CLRIMAGE_OFFSET = cleardepoff >> 16;
+    if (bits1 & (1<<6) || t) ((vu16*)0x04000358)[0] = fogcolor & 0xFFFF;
+    if (bits1 & (1<<7) || t) ((vu16*)0x04000358)[1] = fogcolor >> 16;
+    if (bits2 & (1<<0) || t) GFX_FOG_OFFSET = fogoffset;
 
     for (int i = 0; i < 32; i++)
-        if (fogtable_mask[i/8] & (1 << (i % 8))) GFX_FOG_TABLE[i] = fogtable[i];
+        if (fogtable_mask[i/8] & (1 << (i % 8)) || t) GFX_FOG_TABLE[i] = fogtable[i];
     for (int i = 0; i < 64; i++)
-        if (toontable_mask[i/8] & (1 << (i % 8))) ((vu8*)0x04000380)[i] = ((u8*)toontable)[i];
+        if (toontable_mask[i/8] & (1 << (i % 8)) || t) ((vu8*)0x04000380)[i] = ((u8*)toontable)[i];
 
-    if (bits2 & (1<<1)) GFX_CUTOFF_DEPTH = zdotdisp;
-    if (bits2 & (1<<7)) GFX_VIEWPORT = viewport;
+    if (bits2 & (1<<1) || t) GFX_CUTOFF_DEPTH = zdotdisp;
+    if (bits2 & (1<<7) || t) GFX_VIEWPORT = viewport;
 
 
     // init regs relevant to the normal command
-    if (bits3 & (1<<1))
+    if (bits3 & (1<<1) || t)
     {
     // init polyattr for normal
-    if (bits5 & (1<<4))
+    if (bits5 & (1<<4) || t)
     {
         GFX_POLY_FORMAT = normpolyattr;
         GFX_BEGIN = 0; // dummy begin cmd
     }
 
     //init lights for normal
-    if ((u64)normlightvecvecmtx_mask) MATRIX_CONTROL = 2;
+    if ((u64)normlightvecvecmtx_mask || t) MATRIX_CONTROL = 2;
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 16; j++)
         {
-            if (!(normlightvecvecmtx_mask[i] & (1<<j))) continue;
+            if (!(normlightvecvecmtx_mask[i] & (1<<j)) || t) continue;
             MATRIX_LOAD4x4 = normlightvecvecmtx[i][j];
         }
-        if ((bits4 >> i) & 0x1) GFX_LIGHT_VECTOR = normlightvec[i];
-        if ((bits4 >> (i+4)) & 0x1) GFX_LIGHT_COLOR = normlightcolor[i];
+        if ((bits4 >> i) & 0x1 || t) GFX_LIGHT_VECTOR = normlightvec[i];
+        if ((bits4 >> (i+4)) & 0x1 || t) GFX_LIGHT_COLOR = normlightcolor[i];
     }
     // init textures for normal
-    if (bits3 & (1<<4)) GFX_TEX_FORMAT = normtexparams;
+    if (bits3 & (1<<4) || t) GFX_TEX_FORMAT = normtexparams;
     
-    if (normtexmtx_mask) MATRIX_CONTROL = 3;
+    if (normtexmtx_mask || t) MATRIX_CONTROL = 3;
     for (int i = 0; i < 16; i++)
-        if (normtexmtx_mask & (1<<i)) MATRIX_LOAD4x4 = normtexmtx[i];
+        if (normtexmtx_mask & (1<<i) || t) MATRIX_LOAD4x4 = normtexmtx[i];
     // init diff/ambi for normal
-    if (bits3 & (1<<2)) GFX_DIFFUSE_AMBIENT = normdiffambi;
-    if (bits3 & (1<<3)) GFX_SPECULAR_EMISSION = normspecemis;
+    if (bits3 & (1<<2) || t) GFX_DIFFUSE_AMBIENT = normdiffambi;
+    if (bits3 & (1<<3) || t) GFX_SPECULAR_EMISSION = normspecemis;
 
     // init vector matrix for normal
-    if (normvecmtx_mask)
+    if (normvecmtx_mask || t)
     {
         MATRIX_CONTROL = 2;
         for (int i = 0; i < 16; i++)
-            if (normvecmtx_mask & (1<<i)) MATRIX_LOAD4x4 = normvecmtx[i];
+            if (normvecmtx_mask & (1<<i) || t) MATRIX_LOAD4x4 = normvecmtx[i];
     }
     
     // init shininess table too for the normal
     for (int i = 0; i < 32; i++)
-        if (normshininess_mask & (1<<i)) GFX_SHININESS = normshininess[i];
+        if (normshininess_mask & (1<<i) || t) GFX_SHININESS = normshininess[i];
 
     // actually do the normal at long last.
     GFX_NORMAL = normal;
     }
 
     
-    if (bits2 & (1<<6))
+    if (bits2 & (1<<6) || t)
     {
         u8 vtxcolortype = ((bits2 >> 4) & 0b11);
         if (vtxcolortype == 0)
@@ -386,32 +349,32 @@ int main()
             GFX_DIFFUSE_AMBIENT = vtxcolor;
     }
 
-    if (bits5 & (1<<2)) GFX_DIFFUSE_AMBIENT = diffambi;
-    if (bits5 & (1<<3)) GFX_SPECULAR_EMISSION = specemis;
+    if (bits5 & (1<<2) || t) GFX_DIFFUSE_AMBIENT = diffambi;
+    if (bits5 & (1<<3) || t) GFX_SPECULAR_EMISSION = specemis;
 
     for (int i = 0; i < 32; i++)
-        if (shininess_mask & (1<<i)) GFX_SHININESS = shininess[i];
+        if (shininess_mask & (1<<i) || t) GFX_SHININESS = shininess[i];
 
     // init lights
-    if ((u64)lightvecvecmtx_mask) MATRIX_CONTROL = 2;
+    if ((u64)lightvecvecmtx_mask || t) MATRIX_CONTROL = 2;
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 16; j++)
-            if (lightvecvecmtx_mask[i] & (1<<j)) MATRIX_LOAD4x4 = lightvecvecmtx[i][j];
+            if (lightvecvecmtx_mask[i] & (1<<j) || t) MATRIX_LOAD4x4 = lightvecvecmtx[i][j];
 
-        if ((bits6) & (1<<i)) GFX_LIGHT_VECTOR = lightvec[i];
-        if ((bits6) & (1<<(i+4))) GFX_LIGHT_COLOR = lightcolor[i];
+        if ((bits6) & (1<<i) || t) GFX_LIGHT_VECTOR = lightvec[i];
+        if ((bits6) & (1<<(i+4)) || t) GFX_LIGHT_COLOR = lightcolor[i];
     }
     
 
     // init matrix stack
     
-    if (projstack_mask) 
+    if (projstack_mask || t) 
     {
         MATRIX_CONTROL = 0;
         for (int i = 0; i < 16; i++)
         {
-            if (!(projstack_mask & (1<<i))) break;
+            if (!(projstack_mask & (1<<i)) || t) break;
 
             MATRIX_LOAD4x4 = projstack[i];
         }
@@ -423,8 +386,8 @@ int main()
     bool runvec = false;
     for (int i = 0; i < 32; i++)
     {
-        if (posstack_mask[i]) runpos = true;
-        if (vecstack_mask[i]) runvec = true;
+        if (posstack_mask[i] || t) runpos = true;
+        if (vecstack_mask[i] || t) runvec = true;
     }
     if (runpos || runvec)
     for (int j = 0; j < 32; j++)
@@ -436,7 +399,7 @@ int main()
             MATRIX_CONTROL = 1;
             for (int i = 0; i < 16; i++)
             {
-                if (!(posstack_mask[j] & (1<<i))) break;
+                if (!(posstack_mask[j] & (1<<i)) || t) break;
 
                 posveccheck = true;
                 MATRIX_LOAD4x4 = posstack[j][i];
@@ -447,7 +410,7 @@ int main()
             MATRIX_CONTROL = 2;
             for (int i = 0; i < 16; i++)
             {
-                if (!(vecstack_mask[j] & (1<<i))) break;
+                if (!(vecstack_mask[j] & (1<<i)) || t) break;
 
                 posveccheck = true;
                 MATRIX_LOAD4x4 = vecstack[j][i];
@@ -457,12 +420,12 @@ int main()
     }
     }
 
-    if (texstack_mask)
+    if (texstack_mask || t)
     {
         MATRIX_CONTROL = 3;
         for (int i = 0; i < 16; i++)
         {
-            if (!(texstack_mask & (1<<i))) break;
+            if (!(texstack_mask & (1<<i)) || t) break;
 
             MATRIX_LOAD4x4 = texstack[i];
         }
@@ -470,64 +433,64 @@ int main()
     }
 
     // init matrices
-    if (projmtx_mask)
+    if (projmtx_mask || t)
     {
         MATRIX_CONTROL = 0;
         for (int i = 0; i < 16; i++)
         {
-            if (!(projmtx_mask & (1<<i))) break;
+            if (!(projmtx_mask & (1<<i)) || t) break;
 
             MATRIX_LOAD4x4 = projmtx[i];
         }
     }
-    if (posmtx_mask)
+    if (posmtx_mask || t)
     {
         MATRIX_CONTROL = 1;
         for (int i = 0; i < 16; i++)
         {
-            if (!(posmtx_mask & (1<<i))) break;
+            if (!(posmtx_mask & (1<<i)) || t) break;
 
             MATRIX_LOAD4x4 = posmtx[i];
         }
     }
-    if (vecmtx_mask)
+    if (vecmtx_mask || t)
     {
         MATRIX_CONTROL = 2;
         for (int i = 0; i < 16; i++)
         {
-            if (!(vecmtx_mask & (1<<i))) break;
+            if (!(vecmtx_mask & (1<<i)) || t) break;
 
             MATRIX_LOAD4x4 = vecmtx[i];
         }
     }
-    if (texmtx_mask)
+    if (texmtx_mask || t)
     {
         MATRIX_CONTROL = 3;
         for (int i = 0; i < 16; i++)
         {
-            if (!(texmtx_mask & (1<<i))) break;
+            if (!(texmtx_mask & (1<<i)) || t) break;
 
             MATRIX_LOAD4x4 = texmtx[i];
         }
     }
     
-    if (bits3 & (1<<0)) MATRIX_CONTROL = matrixmode;
+    if (bits3 & (1<<0) || t) MATRIX_CONTROL = matrixmode;
     
-    if (bits2 & (1<<2)) GFX_POLY_FORMAT = polyattr;
+    if (bits2 & (1<<2) || t) GFX_POLY_FORMAT = polyattr;
     // init polygon engine (that's a term right?)
-    if (bits3 & (1<<5)) GFX_BEGIN = polygon;
+    if (bits3 & (1<<5) || t) GFX_BEGIN = polygon;
 
     // init texture state
-    if (bits3 & (1<<7)) GFX_TEX_COORD = texcoord;
-    if (bits5 & (1<<0)) GFX_TEX_FORMAT = texparams;
-    if (bits5 & (1<<1)) GFX_PAL_FORMAT = texpalette;
+    if (bits3 & (1<<7) || t) GFX_TEX_COORD = texcoord;
+    if (bits5 & (1<<0) || t) GFX_TEX_FORMAT = texparams;
+    if (bits5 & (1<<1) || t) GFX_PAL_FORMAT = texpalette;
 
     // init some vertices just in case (render an entire polygon because otherwise it actually hangs entirely--)
-    if (bits3 & (1<<6))
+    if (bits3 & (1<<6) || t)
     {
         u8 vtxnum;
-        if (!(bits3 & (1<<5))) vtxnum = 3; // just pray it defaults to tri otherwise we hang the entire gpu lol
-        if (polygon == 0 || polygon == 2) vtxnum = 3;
+        if (!(bits3 & (1<<5) || t)) vtxnum = 3; // just pray it defaults to tri otherwise we hang the entire gpu lol
+        else if (polygon == 0 || polygon == 2) vtxnum = 3;
         else vtxnum = 4;
         for (int i = 0; i < vtxnum; i++)
         {
@@ -536,31 +499,68 @@ int main()
         }
     }
     // unset polygon format (will be properly set when the next polygon begin cmd gets sent)
-    if (bits2 & (1<<3)) GFX_POLY_FORMAT = polyattrunset;
+    if (bits2 & (1<<3) || t) GFX_POLY_FORMAT = polyattrunset;
 
     GFX_FLUSH = swapbuffer;
+}
 
-    fread(&numcmds, 1, sizeof(numcmds), file);
-
-    swiWaitForVBlank(); // wait for swap buffer to actually take place
-
-    fprintf(stderr, "%li-nc%li\n", ftell(file), numcmds);
-    // run gx commands
+template<bool load>
+void runGX(FILE* file)
+{
     for (u32 i = 0; i < numcmds; i++)
     {   
         u32 addr = 0x04000000;
-        u16 addr2;
-        fread(&addr2, 1, sizeof(addr2), file);
+        if (load) fread(&cmd[i], 1, sizeof(cmd[i]), file);
 
-        if (!((addr2 >= 0x400 && addr2 < 0x600) || addr2 == 0x610)) break; // if an invalid address is entered ABORT.
-        if (addr2 >= 0x5C0 && addr2 <= 0x5C8) continue; // skip doing test cmds
+        if (!(cmd[i] < 128 || cmd[i] == 132)) break; // if an invalid address is entered ABORT.
 
-        vu32* finaladdr = (vu32*)(addr | addr2);
+        vu32* finaladdr = (vu32*)(addr | ((cmd[i] << 2) + 0x400));
 
-        u32 param;
-        fread(&param, 1, sizeof(param), file); 
-        *finaladdr = param;
+        if (load) fread(&param[i], 1, sizeof(param[i]), file); 
+        *finaladdr = param[i];
     }
+}
+
+int main()
+{
+    // setup file
+    //todo add a thingy for selecting which file to open from a menu.
+    
+    //consoleDebugInit(DebugDevice_NOCASH);
+    fatInitDefault();
+    FILE* file = fopen("fat:/dump0.fd", "rb");
+
+    if (file == nullptr) 
+    {
+        nitroFSInit(NULL);
+        file = fopen("nitro:/dump0.fd", "rb");
+        if (file == nullptr)
+        {
+            consoleDemoInit();
+            printf("Unable to load frame dump.\n\nPlease turn off the console.");
+            while (true)
+            {
+                swiWaitForVBlank();
+            }
+        }
+    }
+
+    initVars(file);
+
+    // enable 3d gpu
+    powerOn(POWER_3D_CORE | POWER_MATRIX);
+
+    initVram(file);
+
+    initFrameState(false);
+    
+    fread(&numcmds, 1, sizeof(numcmds), file);
+
+    swiWaitForVBlank(); // wait for swap buffer to actually take place
+    //"address: 0x0400" "gx: 0x" "cmd"
+    // run gx commands
+    videoSetMode(MODE_0_3D);
+    runGX<true>(file);
 
     // loop until any input is recieved
     // todo: add screencap support AND a menu to toggle/edit stuffs
