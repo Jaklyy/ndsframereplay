@@ -114,6 +114,61 @@ u32 numcmds;
 u8 cmd[30000];
 u32 param[90000];
 
+#define MAP_OFFSET   8192
+#define MAP_WIDTH    (256 / 8)
+#define MAP_HEIGHT   (192 / 8)
+#define MAP_AREA     (MAP_WIDTH * MAP_HEIGHT)
+#define PALETTE_SIZE 16
+
+u16 menucursor = 0;
+
+void mapWrite(u8 tile)
+{
+    BG_GFX_SUB[MAP_OFFSET + menucursor++] = tile;
+}
+
+void menuWrite(const char* text)
+{
+    for (int i = 0;; i++)
+    {
+        switch (text[i])
+        {
+        case '\n':
+            menucursor = ((menucursor >> 5) + 1) << 5; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
+            break;
+        case 0:
+            return;
+        default:
+            mapWrite(Font::lookup[text[i]]);
+            break;
+        }
+    }
+}
+
+void menuClear()
+{
+    // clear the visible area of the map
+    for(int i = 0; i < MAP_AREA; i++)
+        BG_GFX_SUB[MAP_OFFSET+i] = 0;
+    menucursor = 0;
+}
+
+void menuInit()
+{
+    VRAM_H_CR = VRAM_ENABLE | VRAM_H_SUB_BG;
+    VRAM_I_CR = VRAM_ENABLE | VRAM_I_SUB_BG_0x06208000;
+    REG_DISPCNT_SUB = DISPLAY_BG0_ACTIVE | (1<<16);
+    (*((vu16*)0x04001008)) = (8<<8); // could not find a define for any of the bgcnts
+    
+    menuClear();
+    // allocate tileset to vram
+    for(int i = 0; i < Font::max; i++)
+        for (int j = 0; j < 32; j+=2)
+            BG_GFX_SUB[((16*i)+(j>>1))] = Font::charset[i][j] | Font::charset[i][j+1] << 8;
+    // init relevant palettes
+    BG_PALETTE_SUB[0] = 0;
+    BG_PALETTE_SUB[1] = 0x7FFF;
+}
 
 void initVars(FILE* file)
 {
@@ -366,11 +421,10 @@ void runGX()
 
 int main()
 {
-    // setup file
-    //todo add a thingy for selecting which file to open from a menu.
-    videoSetModeSub(MODE_0_2D);
-
     //consoleDebugInit(DebugDevice_NOCASH);
+    menuInit();
+
+    // setup file
     fatInitDefault();
     FILE* file = fopen("dump0.fd", "rb");
 
@@ -400,7 +454,6 @@ int main()
     
     fread(&numcmds, 1, sizeof(numcmds), file);
 
-    swiWaitForVBlank(); // wait for swap buffer to actually take place
 
     //fprintf(stderr, "%li\n", ftell(file));
     for (u32 i = 0, j = 0; i < numcmds; i++)
@@ -413,6 +466,8 @@ int main()
             j++;
         }
     }
+
+    swiWaitForVBlank(); // wait for swap buffer to actually take place
 
     videoSetMode(MODE_0_3D);
     runGX();
