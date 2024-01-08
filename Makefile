@@ -113,7 +113,7 @@ DEFINES		+= -D__NDS__ -DARM9
 
 ARCH		:= -mcpu=arm946e-s+nofp
 
-WARNFLAGS	:= -Wall
+WARNFLAGS	:= -Wall -Wno-incompatible-pointer-types -Wno-pointer-sign -Wno-sizeof-pointer-memaccess
 
 ifeq ($(SOURCES_CPP),)
     LD		:= $(CC)

@@ -2,9 +2,11 @@
 #include <fat.h>
 #include <stdio.h>
 #include <filesystem.h>
+#include <dirent.h>
+#include <stdarg.h>
 
-#include "main.h"
 #include "font.h"
+#include "main.h"
 
 
 
@@ -114,61 +116,15 @@ u32 numcmds;
 u8 cmd[30000];
 u32 param[90000];
 
-#define MAP_OFFSET   8192
-#define MAP_WIDTH    (256 / 8)
-#define MAP_HEIGHT   (192 / 8)
-#define MAP_AREA     (MAP_WIDTH * MAP_HEIGHT)
-#define PALETTE_SIZE 16
+#define MAP_OFFSET              8192
+#define MAP_WIDTH               (256 / 8)
+#define MAP_HEIGHT              (192 / 8)
+#define MAP_AREA                (MAP_WIDTH * MAP_HEIGHT)
+#define PALETTE_SIZE            16
+#define DISABLE_BACK_BUTTON     0
 
 u16 menucursor = 0;
 
-void mapWrite(u8 tile)
-{
-    BG_GFX_SUB[MAP_OFFSET + menucursor++] = tile;
-}
-
-void menuWrite(const char* text)
-{
-    for (int i = 0;; i++)
-    {
-        switch (text[i])
-        {
-        case '\n':
-            menucursor = ((menucursor >> 5) + 1) << 5; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
-            break;
-        case 0:
-            return;
-        default:
-            mapWrite(Font::lookup[text[i]]);
-            break;
-        }
-    }
-}
-
-void menuClear()
-{
-    // clear the visible area of the map
-    for(int i = 0; i < MAP_AREA; i++)
-        BG_GFX_SUB[MAP_OFFSET+i] = 0;
-    menucursor = 0;
-}
-
-void menuInit()
-{
-    VRAM_H_CR = VRAM_ENABLE | VRAM_H_SUB_BG;
-    VRAM_I_CR = VRAM_ENABLE | VRAM_I_SUB_BG_0x06208000;
-    REG_DISPCNT_SUB = DISPLAY_BG0_ACTIVE | (1<<16);
-    (*((vu16*)0x04001008)) = (8<<8); // could not find a define for any of the bgcnts
-    
-    menuClear();
-    // allocate tileset to vram
-    for(int i = 0; i < Font::max; i++)
-        for (int j = 0; j < 32; j+=2)
-            BG_GFX_SUB[((16*i)+(j>>1))] = Font::charset[i][j] | Font::charset[i][j+1] << 8;
-    // init relevant palettes
-    BG_PALETTE_SUB[0] = 0;
-    BG_PALETTE_SUB[1] = 0x7FFF;
-}
 
 void initVars(FILE* file)
 {
@@ -290,9 +246,8 @@ void initVram(FILE* file)
     }
 }
 
-void initFrameState(bool trustemu)
+void initGlobals()
 {
-    // init frame state
     GFX_CONTROL = disp3dcnt;
 
     for (int i = 0; i < 8; i++)
@@ -309,7 +264,11 @@ void initFrameState(bool trustemu)
         GFX_FOG_TABLE[i] = fogtable[i];
         GFX_TOON_TABLE[i] = toontable[i];
     }
+}
 
+void initFrameState(bool trustemu)
+{
+    // init frame state
     if (zdotdisp_track || trustemu) GFX_CUTOFF_DEPTH = zdotdisp;
     GFX_VIEWPORT = viewport;
     GFX_COLOR = vtxcolor;
@@ -419,43 +378,24 @@ void runGX()
     }
 }
 
-int main()
+void runDump()
 {
-    //consoleDebugInit(DebugDevice_NOCASH);
-    menuInit();
-
-    // setup file
-    fatInitDefault();
-    FILE* file = fopen("dump0.fd", "rb");
-
-    if (file == nullptr) 
-    {
-        nitroFSInit(NULL);
-        file = fopen("nitro:/dump0.fd", "rb");
-        if (file == nullptr)
-        {
-            consoleDemoInit();
-            printf("Unable to load frame dump.\n\nPlease turn off the console.");
-            while (true)
-            {
-                swiWaitForVBlank();
-            }
-        }
-    }
-
-    initVars(file);
-
-    // enable 3d gpu
-    powerOn(POWER_3D_CORE | POWER_MATRIX);
-
-    initVram(file);
-
     initFrameState(false);
+
+    swiWaitForVBlank(); // wait for buffer swap to actually take place
+
+    videoSetMode(MODE_0_3D);
+    runGX();
+}
+
+void loadFile(FILE* file)
+{
+    initVars(file);
+    initVram(file);
+    initGlobals();
     
     fread(&numcmds, 1, sizeof(numcmds), file);
 
-
-    //fprintf(stderr, "%li\n", ftell(file));
     for (u32 i = 0, j = 0; i < numcmds; i++)
     {
         fread(&cmd[i], 1, sizeof(cmd[0]), file);
@@ -466,18 +406,391 @@ int main()
             j++;
         }
     }
+    
+    runDump();
+}
 
-    swiWaitForVBlank(); // wait for swap buffer to actually take place
+void mapWrite(u8 tile, u8 palette)
+{
+    BG_GFX_SUB[MAP_OFFSET + menucursor++] = (palette << 12) | tile;
+}
 
-    videoSetMode(MODE_0_3D);
-    runGX();
+void mapWriteRev(u8 tile, u8 palette)
+{
+    BG_GFX_SUB[MAP_OFFSET + menucursor--] = (palette << 12) | tile;
+}
 
-    // loop until any input is recieved
-    // todo: add screencap support AND a menu to toggle/edit stuffs
-    scanKeys();
-    while (!keysHeld())
+void menuWrite(u8* text)
+{
+    u8 palette = 0;
+    for (u16 i = 0; text[i] != 0; i++)
     {
-        scanKeys();
-        swiWaitForVBlank();
+        switch (text[i])
+        {
+        case '\n':
+            menucursor = ((menucursor >> 5) + 1) << 5; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
+            break;
+        case ((u8)'\xF0') ... ((u8)'\xFF'):
+            palette = text[i];
+            break;
+        default:
+            mapWrite(lookup[text[i]], palette);
+            break;
+        }
     }
+}
+
+void menuWriteRev(u8* text)
+{
+    u8 palette = 0;
+    u8 numchars = 0;
+    for (u16 i = 0; text[i] != 0; i++)
+        numchars++;
+
+    for (u16 i = numchars; i > 0; i--)
+    {
+        switch (text[i])
+        {
+        /*case '\n':
+            menucursor = ((menucursor >> 5) << 5) - 1; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
+            break;*/
+        case ((u8)'\xF0') ... ((u8)'\xFF'):
+            palette = text[i];
+            break;
+        default:
+            mapWriteRev(lookup[text[i]], palette);
+            break;
+        }
+    }
+}
+
+void menuClear()
+{
+    // clear the visible area of the map
+    for(int i = 0; i < MAP_AREA; i++)
+        BG_GFX_SUB[MAP_OFFSET+i] = 0;
+    menucursor = 0;
+}
+
+void menuInit()
+{
+    VRAM_H_CR = VRAM_ENABLE | VRAM_H_SUB_BG;
+    VRAM_I_CR = VRAM_ENABLE | VRAM_I_SUB_BG_0x06208000;
+    REG_DISPCNT_SUB = DISPLAY_BG0_ACTIVE | (1<<16);
+    (*((vu16*)0x04001008)) = (8<<8); // could not find a define for any of the bgcnts
+    
+    menuClear();
+    // allocate tileset to vram
+    for(int i = 0; i < max; i++)
+        for (int j = 0; j < 32; j+=2)
+            BG_GFX_SUB[((16*i)+(j>>1))] = charset[i][j] | charset[i][j+1] << 8;
+    // init relevant palettes
+    BG_PALETTE_SUB[0] = 0;
+    BG_PALETTE_SUB[1] = 0x7FFF;
+    BG_PALETTE_SUB[PALETTE_SIZE+0] = 0;
+    BG_PALETTE_SUB[PALETTE_SIZE+1] = 0x1F; // red
+    BG_PALETTE_SUB[(PALETTE_SIZE*2)+0] = 0;
+    BG_PALETTE_SUB[(PALETTE_SIZE*2)+1] = 0x3FF; // yellow
+}
+
+void menuRender(u8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
+{
+    menuClear();
+    int j = 0;
+    for (int i = 0; i < header; i++)
+    {
+        menuWrite(strings[j++]);
+        sel++;
+    }
+
+    numstr -= ((u8)footerL + footerR);
+    for (;j < numstr; j++)
+    {
+        if (j == sel) mapWrite(caret, 0);
+        else mapWrite(0, 0);
+        menuWrite(strings[j]);
+    }
+
+    for (int i = 0; i < footerL; i++)
+    {
+        menucursor = MAP_AREA - (MAP_WIDTH * (footerL - i));
+        menuWrite(strings[j++]);
+    }
+    for (int i = 0; i < footerR; i++)
+    {
+        menucursor = MAP_AREA - (MAP_WIDTH * (footerL - i + 1) - 1);
+        menuWriteRev(strings[j++]);
+    }
+}
+
+u16 menuInputs(u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
+{
+    u16 numentries = numstr - header - footerL - footerR;
+    s8 cursor = 0;
+    bool menudirty = true;
+    scanKeys();
+    u16 prevkeys = keysHeld();
+    while (true)
+    {   
+        swiWaitForVBlank();
+        if (menudirty)
+        {
+            menuRender(cursor, header, footerL, footerR, numstr, strings);
+            menudirty = false;
+        }
+
+        scanKeys();
+        u16 keys = keysHeld();
+        if (keys & KEY_A && !(prevkeys & KEY_A))
+        {
+            return cursor + startID;
+        }
+        else if (inputids.B != 0 && keys & KEY_B && !(prevkeys & KEY_B))
+        {
+            return inputids.B;
+        }
+        else if (inputids.X != 0 && keys & KEY_B && !(prevkeys & KEY_B))
+        {
+            return inputids.X;
+        }
+        else if (inputids.R != 0 && keys & KEY_B && !(prevkeys & KEY_B))
+        {
+            return inputids.R;
+        }
+        else if (keys & KEY_UP && !(prevkeys & KEY_UP))
+        {
+            cursor--;
+            if (cursor < 0) cursor = numentries-1;
+            menudirty = true;
+        }
+        else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
+        {
+            cursor++;
+            if (cursor > numentries-1) cursor = 0;
+            menudirty = true;
+        }
+        prevkeys = keys;
+    }
+}
+
+u8 menuDirSelect(bool back)
+{
+    bool opensd = false;
+    bool usingfoldersd = false;
+    bool openfat = false;
+    bool usingfolderfat = false;
+    bool opennitro = false;
+    
+    // test console sd
+    DIR* testdir = opendir("sd:/framedumps");
+    if (testdir == NULL) testdir = opendir("sd:/");
+    else usingfoldersd = true;
+    if (testdir != NULL)
+    {
+        opensd = true;
+        closedir(testdir);
+    }
+
+    // test flash cart sd
+    testdir = opendir("fat:/framedumps");
+    if (testdir == NULL) testdir = opendir("fat:/");
+    else usingfolderfat = true;
+    if (testdir != NULL)
+    {
+        openfat = true;
+        closedir(testdir);
+    }
+
+    // test romfs
+    testdir = opendir("nitro:/");
+    if (testdir != NULL)
+    {
+        opennitro = true;
+        closedir(testdir);
+    }
+
+    // count found dirs
+    u8 numfound = opensd + openfat + opennitro; 
+
+    // if none opened
+    if (numfound <= 1)
+    {
+        if (numfound == 0)
+        {
+            menuWrite(str_err_dir);
+            while(true) swiWaitForVBlank();
+        }
+        else
+        {
+            if (opennitro) return 0;
+            if (opensd) return (usingfoldersd ? 3 : 1);
+            if (openfat) return (usingfolderfat ? 4 : 2);
+        }
+    }
+
+    u8* ptr_array[5] = {[0] = str_menu_seldir};
+    int i = 1;
+    if (opennitro)
+    {
+        ptr_array[i] = str_opt_nitro;
+        i++;
+    }
+    if (opensd)
+    {
+        ptr_array[i] = str_opt_sd;
+        i++;
+    }
+    if (openfat)
+    {
+        ptr_array[i] = str_opt_fc;
+        i++;
+    }
+
+    u8 backid = DISABLE_BACK_BUTTON;
+    if (back)
+    {
+        ptr_array[i] = str_hint_bback;
+        i++;
+        backid = 5;
+    }
+    ptr_array[i] = str_hint_asel;
+    i++;
+
+
+    u16 selection = menuInputs(0, (struct InputIDs) {backid,0,0}, 1, 1, back, i, ptr_array);
+    if (!opennitro && selection == 0) selection++;
+    if ((!opennitro || !opensd) && selection == 1) selection++;
+
+    if ((selection == 1 && usingfoldersd) || (selection == 2 && usingfolderfat)) selection++;
+
+    return selection;
+}
+
+FILE* menuFileSelect(u8 dir)
+{
+    u8 numentries = 0;
+    u8* ptr_array[24];
+    u8 locations[24] = {};
+    u8 dirr[18];
+
+    if (dir == 0) strncpy(dirr, "nitro:/", sizeof(dirr));
+    else if (dir == 1 || dir == 3) strncpy(dirr, "sd:/", sizeof(dirr));
+    else if (dir == 2 || dir == 4) strncpy(dirr, "fat:/", sizeof(dirr));
+    if (dir >= 3) strncpy(dirr, "/framedumps/", sizeof(dirr));
+
+    ptr_array[0] = str_menu_selfile;
+
+    for (u16 i = 0; i < 256; i++)
+    {
+        u8 name[28];
+        snprintf(name, sizeof(name), "%sdump%i.fd", dirr, i);
+        FILE* file = fopen(name, "rb");
+        if (file != NULL)
+        {
+            u8 name2[13] = {};
+            ptr_array[numentries+1] = calloc(1, sizeof(name2));
+            locations[numentries] = i;
+            name2[0] = 0xF0;
+            snprintf(&name2[1], sizeof(name2) - 1, "DUMP%i.FD\n", i);
+            strncpy(ptr_array[numentries+1], name2, sizeof(name2));
+            numentries++;
+            fclose(file);
+            if (numentries == 22) break;
+        }
+    }
+    if (numentries == 0)
+    {
+        menuWrite(str_err_file);
+        u16 keys = 0;
+        while(keys & (KEY_A | KEY_B | KEY_START))
+        {
+            scanKeys();
+            keys = keysHeld();
+            swiWaitForVBlank();
+        }
+        return NULL;
+    }
+
+    numentries++;
+    ptr_array[numentries++] = str_hint_bback;
+    ptr_array[numentries++] = str_hint_asel;
+
+    s16 selection = menuInputs(2, (struct InputIDs) {1,0,0}, 1, 1, 1, numentries, ptr_array) - 2;
+
+    for (int i = 1; i < numentries+1; i++)
+        free(ptr_array[i]);
+
+    if (selection == -1) return NULL;
+
+    u8 name[28];
+    snprintf(name, sizeof(name), "%sdump%i.fd", dirr, locations[selection]);
+    return fopen(name, "rb");
+}
+
+u8 menuScreenshot()
+{
+    u8* ptr_array;
+}
+
+u8 menuMain(FILE** file)
+{
+    u8* ptr_array[] =
+    {
+        str_menu_generic,
+        str_opt_changefile,
+        str_opt_rerender,
+        str_opt_gx,
+        str_hint_rscreenshot,
+        str_hint_asel
+    };
+
+    while (true)
+    {
+        u8 selection = menuInputs(2, (struct InputIDs) {0,0,1}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
+        switch(selection)
+        {
+            case 1: // R button - screenshot
+                //menuScreenshot();
+                break;
+
+            case 2: // change file
+                while(file == NULL)
+                {
+                    u8 sel = menuDirSelect(true);
+                    if (sel == 5) break;
+                    file = menuFileSelect(sel);
+                }
+                loadFile(file);
+                break;
+
+            case 3: // rerender
+                runDump();
+                break;
+
+            case 4: // gx menu
+                //menuGX();
+                break;
+        }
+    }
+}
+
+int main()
+{
+    //consoleDebugInit(DebugDevice_NOCASH);
+    menuInit();
+
+    // setup file
+    fatInitDefault();
+    nitroFSInit(NULL);
+
+    FILE* file = NULL;// = fopen("dump0.fd", "rb");
+
+    while (file == NULL) file = menuFileSelect(menuDirSelect(false));
+    menuClear();
+
+    // enable 3d gpu
+    powerOn(POWER_3D_CORE | POWER_MATRIX);
+    loadFile(file);
+
+    menuMain(&file);
 }

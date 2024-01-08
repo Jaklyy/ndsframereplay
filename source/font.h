@@ -2,9 +2,6 @@
 
 
 
-namespace Font
-{
-
 enum
 {
     Space = 0,
@@ -47,50 +44,53 @@ enum
     colon,
     x,
     caret,
+    period,
     max,
 };
 
-u8 lookup[256];
+const u8 lookup[256] =
+{
+[' '] = Space,
+['A'] = A,
+['B'] = B,
+['C'] = C,
+['D'] = D,
+['E'] = E,
+['F'] = F,
+['G'] = G,
+['H'] = H,
+['I'] = I,
+['L'] = L,
+['M'] = M,
+['N'] = N,
+['O'] = O,
+['P'] = P,
+['R'] = R,
+['S'] = S,
+['T'] = T,
+['U'] = U,
+['V'] = V,
+['W'] = W,
+['X'] = X,
+['Y'] = Y,
+['Z'] = Z,
+['0'] = zero,
+['1'] = one,
+['2'] = two,
+['3'] = three,
+['4'] = four,
+['5'] = five,
+['6'] = six,
+['7'] = seven,
+['8'] = eight,
+['9'] = nine,
+[':'] = colon,
+['x'] = x,
+['>'] = caret,
+['.'] = period,
+};
 
-lookup[' '] = Space;
-lookup['A'] = A;
-lookup['B'] = B;
-lookup['C'] = C;
-lookup['D'] = D;
-lookup['E'] = E;
-lookup['F'] = F;
-lookup['G'] = G;
-lookup['H'] = H;
-lookup['I'] = I;
-lookup['L'] = L;
-lookup['M'] = M;
-lookup['N'] = N;
-lookup['O'] = O;
-lookup['P'] = P;
-lookup['R'] = R;
-lookup['S'] = S;
-lookup['T'] = T;
-lookup['U'] = U;
-lookup['V'] = V;
-lookup['W'] = W;
-lookup['X'] = X;
-lookup['Y'] = Y;
-lookup['Z'] = Z;
-lookup['0'] = zero;
-lookup['1'] = one;
-lookup['2'] = two;
-lookup['3'] = three;
-lookup['4'] = four;
-lookup['5'] = five;
-lookup['6'] = six;
-lookup['7'] = seven;
-lookup['8'] = eight;
-lookup['9'] = nine;
-lookup[':'] = colon;
-lookup['x'] = x;
-lookup['>'] = caret;
-
-u8 charset[][32] =
+const u8 charset[][32] =
 {
 // Null
 {
@@ -492,6 +492,15 @@ u8 charset[][32] =
     0x10, 0x01, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00,
 },
+// period
+{
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x00, 0x00, 0x00,
+    0x00, 0x10, 0x01, 0x00,
+    0x00, 0x10, 0x01, 0x00,
+},
 };
-
-}
