@@ -2,6 +2,9 @@
 
 
 
+#ifndef FONT_H
+#define FONT_H
+
 enum
 {
     Space = 0,
@@ -504,3 +507,4 @@ const u8 charset[][32] =
     0x00, 0x10, 0x01, 0x00,
 },
 };
+#endif

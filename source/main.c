@@ -5,40 +5,16 @@
 #include <dirent.h>
 #include <stdarg.h>
 
-#include "font.h"
 #include "main.h"
-
+#include "menu/menu.h"
+#include "strings.h"
 
 
 
 // file structure:
 
-// misc bits -- SCRAPPED
-// note: the order of these bits is not always the same as the order of the variables in the file (might change this later)
-// also note: some of these regs have more bits than used, they can(?) be written to but they dont do anything(?), so we'll just ignore them to save on file size
-/*u8 bits1; // 0 disp3dcnt; 1 alpha test; 2-3 clear color low/hi; 4 clear dep; 5 clear offset; 6-7 fog color low/hi;
-u8 bits2; // 0 fog offset; 1 zero dot disp; 2 polyattr; 3 unset polyattr; 4-5 vtxcolor type; 6 vtxcolor; 7 viewport;
-u8 bits3; // 0 matrixmode; 1 normal; 2 nordifamb; 3 norspecemis; 4 nortexparam; 5 polygon; 6 vtx; 7 texcoord;
-u8 bits4; // 0-3 norligvec; 4-7 norligcol;
-u8 bits5; // 0 texparam; 1 texpalette; 2 diffambi; 3 specemis; 4 norpolyattr;
-u8 bits6; // 0-3 lightvector; 4-7 lightcolor;
-u16 edgecolor_mask;
-u8 fogtable_mask[4];
-u8 toontable_mask[8];
-u16 projstack_mask; // can matrixes even be partially defined? what even happens when you do that?
-u16 posstack_mask[32];
-u16 vecstack_mask[32];
-u16 texstack_mask;
-u16 projmtx_mask;
-u16 posmtx_mask;
-u16 vecmtx_mask;
-u16 texmtx_mask;
-u16 normtexmtx_mask;
-u16 normvecmtx_mask;
-u32 normshininess_mask;
-u16 normlightvecvecmtx_mask[4];
-u32 shininess_mask;
-u16 lightvecvecmtx_mask[4];*/
+// Header:
+u8 compressiontype; // currently unused, should always be set to 0 (uncompressed)
 
 // global variables:
 // should be saved when registers are latched (ie. right before rendering)
@@ -107,28 +83,18 @@ u8 vramcontrol[7]; // only 7 are actually saved/loaded/used. banks h and i are i
 // (additionally banks H and I are ignored due to not being allocatable to the 3d engine).
 
 // other:
-// nops should not be added to any of these trackers
 u32 numcmds;
-// 30000 as a max is just a guess tbh
-// i dont actually know how many commands the gpu can process in one frame at a maximum
-// probably a *lot* more if you really try to
-// this *should* cover most real games though
-u8 cmd[30000];
-u32 param[90000];
+u32 numparams;
 
-#define MAP_OFFSET              8192
-#define MAP_WIDTH               (256 / 8)
-#define MAP_HEIGHT              (192 / 8)
-#define MAP_AREA                (MAP_WIDTH * MAP_HEIGHT)
-#define PALETTE_SIZE            16
-#define DISABLE_BACK_BUTTON     0
-
-u16 menucursor = 0;
-
+// only store a maximum of 500KB
+// nops and vec/box tests should not be added to any of these trackers
+u8* cmd = NULL;
+u32* param = NULL;
 
 void initVars(FILE* file)
 {
     // init most variables
+    fread(&compressiontype, 1, sizeof(compressiontype), file);
     fread(&disp3dcnt, 1, sizeof(disp3dcnt), file);
     fread(edgecolor, 1, sizeof(edgecolor), file);
     fread(&alphatest, 1, sizeof(alphatest), file);
@@ -171,71 +137,59 @@ void initVars(FILE* file)
 void initVram(FILE* file)
 {
     // turn vram on and set to lcdc mode for easy writing
+    fread(vramcontrol, 1, 7, file);
     for (int i = 0; i < 7; i++)
     {
         //if (i == 7) i++; // skip wramcnt
-        fread(&vramcontrol[i], 1, 1, file);
         vu8* address = (vu8*)((0x04000240 + i)); // vramcnt_a address
         *address = VRAM_ENABLE;
     }
+
     // init vram banks
+    // ignore H & I because irrelevant to 3d gfx
+    u16 vrambuffer[128*1024/2];
     // A
     if ((vramcontrol[0] & 0x83) == 0x83)
-    for (int i = 0; i < 128 * 1024; i += 4)
     {
-        u32 vrambuffer;
-        fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x6800000)[i/4] = vrambuffer; // vram a lcdc address
+        fread(vrambuffer, 2, 128*1024/2, file);
+        memcpy(VRAM_A, vrambuffer, 128*1024);
     }
     // B
     if ((vramcontrol[1] & 0x83) == 0x83)
-    for (int i = 0; i < 128 * 1024; i += 4)
     {
-        u32 vrambuffer;
-        fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x6820000)[i/4] = vrambuffer;
+        fread(vrambuffer, 2, 128*1024/2, file);
+        memcpy(VRAM_B, vrambuffer, 128*1024);
     }
     // C
     if ((vramcontrol[2] & 0x87) == 0x83)
-    for (int i = 0; i < 128 * 1024; i += 4)
     {
-        u32 vrambuffer;
-        fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x6840000)[i/4] = vrambuffer;
+        fread(vrambuffer, 2, 128*1024/2, file);
+        memcpy(VRAM_C, vrambuffer, 128*1024);
     }
     // D
     if ((vramcontrol[3] & 0x87) == 0x83)
-    for (int i = 0; i < 128 * 1024; i += 4)
     {
-        u32 vrambuffer;
-        fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x6860000)[i/4] = vrambuffer;
+        fread(vrambuffer, 2, 128*1024/2, file);
+        memcpy(VRAM_D, vrambuffer, 128*1024);
     }
     // E
     if ((vramcontrol[4] & 0x87) == 0x83)
-    for (int i = 0; i < 64 * 1024; i += 4)
     {
-        u32 vrambuffer;
-        fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x6880000)[i/4] = vrambuffer;
+        fread(vrambuffer, 2, 64*1024/2, file);
+        memcpy(VRAM_E, vrambuffer, 64*1024);
     }
     // F
     if ((vramcontrol[5] & 0x87) == 0x83)
-    for (int i = 0; i < 16 * 1024; i += 4)
     {
-        u32 vrambuffer;
-        fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x6890000)[i/4] = vrambuffer;
+        fread(vrambuffer, 2, 16*1024/2, file);
+        memcpy(VRAM_F, vrambuffer, 16*1024);
     }
     // G
     if ((vramcontrol[6] & 0x87) == 0x83)
-    for (int i = 0; i < 16 * 1024; i += 4)
     {
-        u32 vrambuffer;
-        fread(&vrambuffer, 4, 1, file);
-        ((u32*)0x6894000)[i/4] = vrambuffer;
+        fread(vrambuffer, 2, 16*1024/2, file);
+        memcpy(VRAM_G, vrambuffer, 16*1024);
     }
-    // ignore H & I because irrelevant to 3d gfx
 
     // actually init vramcnt
     for (int i = 0; i < 7; i++)
@@ -363,8 +317,8 @@ void runGX()
 {
     for (u32 i = 0, j = 0; i < numcmds; i++)
     {   
-        // override vector test's cmd id since it does nothing but waste cycles to implement support for the zerodotdisp register with only 8 bits
-        if (cmd[i] == 0x72)
+        // handle zerodotdisp reg writes
+        if (cmd[i] == 255)
             GFX_CUTOFF_DEPTH = param[j++];
         else
         {
@@ -388,192 +342,33 @@ void runDump()
     runGX();
 }
 
-void loadFile(FILE* file)
+bool loadFile(FILE* file)
 {
+    fseek(file, 0, SEEK_SET);
     initVars(file);
     initVram(file);
     initGlobals();
     
     fread(&numcmds, 1, sizeof(numcmds), file);
+    fread(&numparams, 1, sizeof(numparams), file);
+    
+    s32 totalram = numcmds + (numparams * 4);
+    if (totalram >= 500000 || totalram <= 0) return false;
 
-    for (u32 i = 0, j = 0; i < numcmds; i++)
-    {
-        fread(&cmd[i], 1, sizeof(cmd[0]), file);
+    free(cmd);
+    free(param);
 
-        for (int k = 0; k < paramcount[cmd[i]]; k++)
-        {
-            fread(&param[j], 1, sizeof(param[0]), file);
-            j++;
-        }
-    }
+    cmd = malloc(numcmds);
+    param = malloc(numparams*4);
+
+    fread(cmd, 1, numcmds, file);
+    fread(param, 4, numparams, file);
     
     runDump();
+    return true;
 }
 
-void mapWrite(u8 tile, u8 palette)
-{
-    BG_GFX_SUB[MAP_OFFSET + menucursor++] = (palette << 12) | tile;
-}
-
-void mapWriteRev(u8 tile, u8 palette)
-{
-    BG_GFX_SUB[MAP_OFFSET + menucursor--] = (palette << 12) | tile;
-}
-
-void menuWrite(u8* text)
-{
-    u8 palette = 0;
-    for (u16 i = 0; text[i] != 0; i++)
-    {
-        switch (text[i])
-        {
-        case '\n':
-            menucursor = ((menucursor >> 5) + 1) << 5; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
-            break;
-        case ((u8)'\xF0') ... ((u8)'\xFF'):
-            palette = text[i];
-            break;
-        default:
-            mapWrite(lookup[text[i]], palette);
-            break;
-        }
-    }
-}
-
-void menuWriteRev(u8* text)
-{
-    u8 palette = 0;
-    u8 numchars = 0;
-    for (u16 i = 0; text[i] != 0; i++)
-        numchars++;
-
-    for (u16 i = numchars; i > 0; i--)
-    {
-        switch (text[i])
-        {
-        /*case '\n':
-            menucursor = ((menucursor >> 5) << 5) - 1; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
-            break;*/
-        case ((u8)'\xF0') ... ((u8)'\xFF'):
-            palette = text[i];
-            break;
-        default:
-            mapWriteRev(lookup[text[i]], palette);
-            break;
-        }
-    }
-}
-
-void menuClear()
-{
-    // clear the visible area of the map
-    for(int i = 0; i < MAP_AREA; i++)
-        BG_GFX_SUB[MAP_OFFSET+i] = 0;
-    menucursor = 0;
-}
-
-void menuInit()
-{
-    VRAM_H_CR = VRAM_ENABLE | VRAM_H_SUB_BG;
-    VRAM_I_CR = VRAM_ENABLE | VRAM_I_SUB_BG_0x06208000;
-    REG_DISPCNT_SUB = DISPLAY_BG0_ACTIVE | (1<<16);
-    (*((vu16*)0x04001008)) = (8<<8); // could not find a define for any of the bgcnts
-    
-    menuClear();
-    // allocate tileset to vram
-    for(int i = 0; i < max; i++)
-        for (int j = 0; j < 32; j+=2)
-            BG_GFX_SUB[((16*i)+(j>>1))] = charset[i][j] | charset[i][j+1] << 8;
-    // init relevant palettes
-    BG_PALETTE_SUB[0] = 0;
-    BG_PALETTE_SUB[1] = 0x7FFF;
-    BG_PALETTE_SUB[PALETTE_SIZE+0] = 0;
-    BG_PALETTE_SUB[PALETTE_SIZE+1] = 0x1F; // red
-    BG_PALETTE_SUB[(PALETTE_SIZE*2)+0] = 0;
-    BG_PALETTE_SUB[(PALETTE_SIZE*2)+1] = 0x3FF; // yellow
-}
-
-void menuRender(u8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
-{
-    menuClear();
-    int j = 0;
-    for (int i = 0; i < header; i++)
-    {
-        menuWrite(strings[j++]);
-        sel++;
-    }
-
-    numstr -= ((u8)footerL + footerR);
-    for (;j < numstr; j++)
-    {
-        if (j == sel) mapWrite(caret, 0);
-        else mapWrite(0, 0);
-        menuWrite(strings[j]);
-    }
-
-    for (int i = 0; i < footerL; i++)
-    {
-        menucursor = MAP_AREA - (MAP_WIDTH * (footerL - i));
-        menuWrite(strings[j++]);
-    }
-    for (int i = 0; i < footerR; i++)
-    {
-        menucursor = MAP_AREA - (MAP_WIDTH * (footerL - i + 1) - 1);
-        menuWriteRev(strings[j++]);
-    }
-}
-
-u16 menuInputs(u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
-{
-    u16 numentries = numstr - header - footerL - footerR;
-    s8 cursor = 0;
-    bool menudirty = true;
-    scanKeys();
-    u16 prevkeys = keysHeld();
-    while (true)
-    {   
-        swiWaitForVBlank();
-        if (menudirty)
-        {
-            menuRender(cursor, header, footerL, footerR, numstr, strings);
-            menudirty = false;
-        }
-
-        scanKeys();
-        u16 keys = keysHeld();
-        if (keys & KEY_A && !(prevkeys & KEY_A))
-        {
-            return cursor + startID;
-        }
-        else if (inputids.B != 0 && keys & KEY_B && !(prevkeys & KEY_B))
-        {
-            return inputids.B;
-        }
-        else if (inputids.X != 0 && keys & KEY_B && !(prevkeys & KEY_B))
-        {
-            return inputids.X;
-        }
-        else if (inputids.R != 0 && keys & KEY_B && !(prevkeys & KEY_B))
-        {
-            return inputids.R;
-        }
-        else if (keys & KEY_UP && !(prevkeys & KEY_UP))
-        {
-            cursor--;
-            if (cursor < 0) cursor = numentries-1;
-            menudirty = true;
-        }
-        else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
-        {
-            cursor++;
-            if (cursor > numentries-1) cursor = 0;
-            menudirty = true;
-        }
-        prevkeys = keys;
-    }
-}
-
-u8 menuDirSelect(bool back)
+u8 menuDirSelect()
 {
     bool opensd = false;
     bool usingfoldersd = false;
@@ -628,7 +423,7 @@ u8 menuDirSelect(bool back)
         }
     }
 
-    u8* ptr_array[5] = {[0] = str_menu_seldir};
+    u8* ptr_array[6] = {[0] = str_menu_seldir};
     int i = 1;
     if (opennitro)
     {
@@ -646,18 +441,13 @@ u8 menuDirSelect(bool back)
         i++;
     }
 
-    u8 backid = DISABLE_BACK_BUTTON;
-    if (back)
-    {
-        ptr_array[i] = str_hint_bback;
-        i++;
-        backid = 5;
-    }
+    ptr_array[i] = str_hint_bback;
+    i++;
+
     ptr_array[i] = str_hint_asel;
     i++;
 
-
-    u16 selection = menuInputs(0, (struct InputIDs) {backid,0,0}, 1, 1, back, i, ptr_array);
+    u16 selection = menuInputs(0, (struct InputIDs) {5,0,0}, 1, 1, 1, i, ptr_array);
     if (!opennitro && selection == 0) selection++;
     if ((!opennitro || !opensd) && selection == 1) selection++;
 
@@ -666,20 +456,19 @@ u8 menuDirSelect(bool back)
     return selection;
 }
 
-FILE* menuFileSelect(u8 dir)
+FILE* menuFileSelect(u16 dir)
 {
-    u8 numentries = 0;
-    u8* ptr_array[24];
-    u8 locations[24] = {};
     u8 dirr[18];
-
     if (dir == 0) strncpy(dirr, "nitro:/", sizeof(dirr));
     else if (dir == 1 || dir == 3) strncpy(dirr, "sd:/", sizeof(dirr));
     else if (dir == 2 || dir == 4) strncpy(dirr, "fat:/", sizeof(dirr));
     if (dir >= 3) strncpy(dirr, "/framedumps/", sizeof(dirr));
 
+    u8* ptr_array[25];
     ptr_array[0] = str_menu_selfile;
 
+    u8 numentries = 0;
+    u8 locations[22] = {};
     for (u16 i = 0; i < 256; i++)
     {
         u8 name[28];
@@ -687,12 +476,10 @@ FILE* menuFileSelect(u8 dir)
         FILE* file = fopen(name, "rb");
         if (file != NULL)
         {
-            u8 name2[13] = {};
-            ptr_array[numentries+1] = calloc(1, sizeof(name2));
+            ptr_array[numentries+1] = calloc(1, 13);
             locations[numentries] = i;
-            name2[0] = 0xF0;
-            snprintf(&name2[1], sizeof(name2) - 1, "DUMP%i.FD\n", i);
-            strncpy(ptr_array[numentries+1], name2, sizeof(name2));
+            (ptr_array[numentries+1])[0] = 0xF0;
+            snprintf(&(ptr_array[numentries+1])[1], 12, "DUMP%i.FD\n", i);
             numentries++;
             fclose(file);
             if (numentries == 22) break;
@@ -711,11 +498,11 @@ FILE* menuFileSelect(u8 dir)
         return NULL;
     }
 
-    numentries++;
-    ptr_array[numentries++] = str_hint_bback;
-    ptr_array[numentries++] = str_hint_asel;
+    u8 count = numentries+1;
+    ptr_array[count++] = str_hint_bback;
+    ptr_array[count++] = str_hint_asel;
 
-    s16 selection = menuInputs(2, (struct InputIDs) {1,0,0}, 1, 1, 1, numentries, ptr_array) - 2;
+    s16 selection = menuInputs(2, (struct InputIDs) {1,0,0}, 1, 1, 1, count, ptr_array) - 2;
 
     for (int i = 1; i < numentries+1; i++)
         free(ptr_array[i]);
@@ -726,11 +513,11 @@ FILE* menuFileSelect(u8 dir)
     snprintf(name, sizeof(name), "%sdump%i.fd", dirr, locations[selection]);
     return fopen(name, "rb");
 }
-
+/*
 u8 menuScreenshot()
 {
     u8* ptr_array;
-}
+}*/
 
 u8 menuMain(FILE** file)
 {
@@ -754,15 +541,33 @@ u8 menuMain(FILE** file)
                 break;
 
             case 2: // change file
-                while(file == NULL)
+            {
+                bool unloaded = false;
+                while(true)
                 {
-                    u8 sel = menuDirSelect(true);
-                    if (sel == 5) break;
-                    file = menuFileSelect(sel);
+                    FILE* newfile = NULL;
+                    while (newfile == NULL)
+                    {
+                        u8 sel = menuDirSelect();
+                        if (sel == 5)
+                        {
+                            if (newfile != NULL) fclose(newfile);
+                            if (unloaded) loadFile(*file);
+                            goto abort;
+                        }
+                        newfile = menuFileSelect(sel);
+                    }
+                    unloaded = true;
+                    if (loadFile(newfile))
+                    {
+                        fclose(*file);
+                        *file = newfile;
+                        break;
+                    }
+                    else fclose(newfile);
                 }
-                loadFile(file);
                 break;
-
+            }
             case 3: // rerender
                 runDump();
                 break;
@@ -771,26 +576,37 @@ u8 menuMain(FILE** file)
                 //menuGX();
                 break;
         }
+        abort:
     }
 }
 
 int main()
 {
     //consoleDebugInit(DebugDevice_NOCASH);
+    // init 2d engine to a custom menu implementation
     menuInit();
+
+    // enable 3d gpu
+    powerOn(POWER_3D_CORE | POWER_MATRIX);
 
     // setup file
     fatInitDefault();
     nitroFSInit(NULL);
 
-    FILE* file = NULL;// = fopen("dump0.fd", "rb");
+    FILE* file = NULL;
 
-    while (file == NULL) file = menuFileSelect(menuDirSelect(false));
-    menuClear();
-
-    // enable 3d gpu
-    powerOn(POWER_3D_CORE | POWER_MATRIX);
-    loadFile(file);
+    while (true)
+    {
+        while (file == NULL)
+        {
+            u16 sel = menuDirSelect();
+            if (sel == 5) return 0;
+            file = menuFileSelect(sel);
+        }
+        menuClear();
+        if (loadFile(file)) break;
+        fclose(file);
+    }
 
     menuMain(&file);
 }
