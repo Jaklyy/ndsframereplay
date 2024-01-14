@@ -5,6 +5,12 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+struct Directory
+{
+    DIR* dir;
+    u8 name[17];
+};
+
 enum Cmd_IDs
 {
     //Nop = 0, // not stored

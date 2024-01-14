@@ -21,6 +21,7 @@ struct InputIDs
 
 void mapWrite(u8 tile, u8 palette);
 void menuWrite(u8* text);
+void menuWriteSingle(u8* text);
 void mapWriteRev(u8 tile, u8 palette);
 void menuWriteRev(u8* text);
 void menuClear();

@@ -12,9 +12,9 @@
 
 
 // file structure:
-
+// note: data can optionally be embedded into a png, if so, it should be done in a chunk with the name: "ndSF"
 // Header:
-u8 compressiontype; // currently unused, should always be set to 0 (uncompressed)
+u8 compressiontype; // currently unused, should always be set to 0 (uncompressed) (this byte should not be compressed)
 
 // global variables:
 // should be saved when registers are latched (ie. right before rendering)
@@ -91,10 +91,37 @@ u32 numparams;
 u8* cmd = NULL;
 u32* param = NULL;
 
+bool handlePNG(FILE* file)
+{
+    fseek(file, 0, SEEK_SET);
+
+    u8 buffer[8];
+    fread(buffer, 1, 8, file);
+
+    u8 pngheader[8] = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A}; // check if png
+    if(memcmp(buffer, pngheader, sizeof(pngheader)) != 0)
+    {
+        fseek(file, 0, SEEK_SET);
+        return true; // valid file; not a png
+    }
+
+    u8 ndSF[4] = {'n', 'd', 'S', 'F'};
+    while (true)
+    {
+        if (fread(buffer, 1, 8, file) < 8) return false; // could not file valid fd data in png
+        if (memcmp(&buffer[4], ndSF, sizeof(ndSF)) == 0) return true; // valid file; fd data chunk found
+
+        // convert size value's endianness, also add 4 to skip past checksums
+        int offset = (buffer[0] << 24 | buffer[1] << 16 | buffer[2] << 8 | buffer[3]) + 4;
+        fseek(file, offset, SEEK_CUR);
+    }
+}
+
 void initVars(FILE* file)
 {
     // init most variables
     fread(&compressiontype, 1, sizeof(compressiontype), file);
+
     fread(&disp3dcnt, 1, sizeof(disp3dcnt), file);
     fread(edgecolor, 1, sizeof(edgecolor), file);
     fread(&alphatest, 1, sizeof(alphatest), file);
@@ -344,7 +371,9 @@ void runDump()
 
 bool loadFile(FILE* file)
 {
-    fseek(file, 0, SEEK_SET);
+    if (!handlePNG(file)) // probably shouldn't be done if the file isn't expected to be a png but im too lazy to rework this to handle that properly
+        return false;
+
     initVars(file);
     initVram(file);
     initGlobals();
@@ -368,74 +397,65 @@ bool loadFile(FILE* file)
     return true;
 }
 
-u8 menuDirSelect()
-{
-    bool opensd = false;
-    bool usingfoldersd = false;
-    bool openfat = false;
-    bool usingfolderfat = false;
-    bool opennitro = false;
-    
+struct Directory menuDirSelect()
+{    
     // test console sd
-    DIR* testdir = opendir("sd:/framedumps");
-    if (testdir == NULL) testdir = opendir("sd:/");
-    else usingfoldersd = true;
-    if (testdir != NULL)
+    struct Directory sddir;
+    sddir.dir = opendir("sd:/framedumps");
+    if (sddir.dir == NULL)
     {
-        opensd = true;
-        closedir(testdir);
+        sddir.dir = opendir("sd:/");
+        strcpy(sddir.name, "sd:/");
     }
+    else strcpy(sddir.name, "sd:/framedumps/");
 
     // test flash cart sd
-    testdir = opendir("fat:/framedumps");
-    if (testdir == NULL) testdir = opendir("fat:/");
-    else usingfolderfat = true;
-    if (testdir != NULL)
+    struct Directory fatdir;
+    fatdir.dir = opendir("fat:/framedumps");
+    if (fatdir.dir == NULL)
     {
-        openfat = true;
-        closedir(testdir);
+        fatdir.dir = opendir("fat:/");
+        strcpy(fatdir.name, "fat:/");
     }
+    else strcpy(fatdir.name, "fat:/framedumps/");
 
     // test romfs
-    testdir = opendir("nitro:/");
-    if (testdir != NULL)
-    {
-        opennitro = true;
-        closedir(testdir);
-    }
+    struct Directory nitrodir;
+    nitrodir.dir = opendir("nitro:/");
+    strcpy(nitrodir.name, "nitro:/");
 
     // count found dirs
-    u8 numfound = opensd + openfat + opennitro; 
+    u8 count = (nitrodir.dir != NULL) + (fatdir.dir != NULL) + (sddir.dir != NULL);
 
-    // if none opened
-    if (numfound <= 1)
+    if (count <= 1)
     {
-        if (numfound == 0)
+        // if none opened
+        if (count == 0)
         {
-            menuWrite(str_err_dir);
+            menuWriteSingle(str_err_dir);
             while(true) swiWaitForVBlank();
         }
         else
         {
-            if (opennitro) return 0;
-            if (opensd) return (usingfoldersd ? 3 : 1);
-            if (openfat) return (usingfolderfat ? 4 : 2);
+            if (nitrodir.dir != NULL) return nitrodir;
+            if (fatdir.dir != NULL) return fatdir;
+            if (sddir.dir != NULL) return sddir;
         }
     }
 
     u8* ptr_array[6] = {[0] = str_menu_seldir};
     int i = 1;
-    if (opennitro)
+    if (nitrodir.dir != NULL)
     {
         ptr_array[i] = str_opt_nitro;
         i++;
     }
-    if (opensd)
+    if (sddir.dir != NULL)
     {
         ptr_array[i] = str_opt_sd;
         i++;
     }
-    if (openfat)
+    if (fatdir.dir != NULL)
     {
         ptr_array[i] = str_opt_fc;
         i++;
@@ -447,47 +467,85 @@ u8 menuDirSelect()
     ptr_array[i] = str_hint_asel;
     i++;
 
-    u16 selection = menuInputs(0, (struct InputIDs) {5,0,0}, 1, 1, 1, i, ptr_array);
-    if (!opennitro && selection == 0) selection++;
-    if ((!opennitro || !opensd) && selection == 1) selection++;
-
-    if ((selection == 1 && usingfoldersd) || (selection == 2 && usingfolderfat)) selection++;
-
-    return selection;
-}
-
-FILE* menuFileSelect(u16 dir)
-{
-    u8 dirr[18];
-    if (dir == 0) strncpy(dirr, "nitro:/", sizeof(dirr));
-    else if (dir == 1 || dir == 3) strncpy(dirr, "sd:/", sizeof(dirr));
-    else if (dir == 2 || dir == 4) strncpy(dirr, "fat:/", sizeof(dirr));
-    if (dir >= 3) strncpy(dirr, "/framedumps/", sizeof(dirr));
-
-    u8* ptr_array[25];
-    ptr_array[0] = str_menu_selfile;
-
-    u8 numentries = 0;
-    u8 locations[22] = {};
-    for (u16 i = 0; i < 256; i++)
+    u16 selection = menuInputs(0, (struct InputIDs) {3,0,0}, 1, 1, 1, i, ptr_array);
+    if (selection == 3) 
     {
-        u8 name[28];
-        snprintf(name, sizeof(name), "%sdump%i.fd", dirr, i);
-        FILE* file = fopen(name, "rb");
-        if (file != NULL)
+        struct Directory nuldir;
+        nuldir.dir = NULL;
+        closedir(fatdir.dir);
+        closedir(sddir.dir);
+        closedir(nitrodir.dir);
+        return nuldir;
+    }
+    else if (selection == 2)
+    {
+        closedir(sddir.dir);
+        closedir(nitrodir.dir);
+        return fatdir;
+    }
+    else if (selection == 1)
+    {
+        if (nitrodir.dir == NULL)
         {
-            ptr_array[numentries+1] = calloc(1, 13);
-            locations[numentries] = i;
-            (ptr_array[numentries+1])[0] = 0xF0;
-            snprintf(&(ptr_array[numentries+1])[1], 12, "DUMP%i.FD\n", i);
-            numentries++;
-            fclose(file);
-            if (numentries == 22) break;
+            closedir(sddir.dir);
+            return fatdir;
+        }
+        else if (sddir.dir == NULL)
+        {
+            closedir(nitrodir.dir);
+            return fatdir;
+        }
+        else
+        {
+            closedir(nitrodir.dir);
+            return sddir;
         }
     }
-    if (numentries == 0)
+    else if (nitrodir.dir == NULL)
     {
-        menuWrite(str_err_file);
+        closedir(fatdir.dir);
+        return sddir;
+    }
+    else
+    {
+        closedir(fatdir.dir);
+        closedir(sddir.dir);
+        return nitrodir;
+    }
+}
+
+FILE* menuFileSelect(struct Directory* dir)
+{
+    u8* ptr_array[25];
+    u8* filename_ptrs[22];
+    ptr_array[0] = str_menu_selfile;
+
+    u8 counter = 1;
+    for (int i = 0; counter < 23+1 && i < 256; i++)
+    {
+        char png[] = ".png";
+        char ndsfd[] = ".ndsfd";
+
+        struct dirent* dat = readdir(dir->dir);
+        if (dat == NULL) break;
+
+        char* loc = strrchr(dat->d_name, '.');
+        
+        if (strcmp(loc, png) == 0 || strcmp(loc, ndsfd) == 0)
+        {
+            ptr_array[counter] = malloc(33);
+            filename_ptrs[counter-1] = malloc(255);
+            strcpy(filename_ptrs[counter-1], dat->d_name);
+            strncpy(ptr_array[counter], dat->d_name, 31);
+            strncat(ptr_array[counter++], "\n", 1);
+        }
+    }
+
+    closedir(dir->dir);
+
+    if (counter == 1)
+    {
+        menuWriteSingle(str_err_file);
         u16 keys = 0;
         while(keys & (KEY_A | KEY_B | KEY_START))
         {
@@ -498,21 +556,41 @@ FILE* menuFileSelect(u16 dir)
         return NULL;
     }
 
-    u8 count = numentries+1;
-    ptr_array[count++] = str_hint_bback;
-    ptr_array[count++] = str_hint_asel;
+    ptr_array[counter++] = str_hint_bback;
+    ptr_array[counter++] = str_hint_asel;
 
-    s16 selection = menuInputs(2, (struct InputIDs) {1,0,0}, 1, 1, 1, count, ptr_array) - 2;
+    s16 selection = menuInputs(2, (struct InputIDs) {1,0,0}, 1, 1, 1, counter, ptr_array) - 2;
 
-    for (int i = 1; i < numentries+1; i++)
+    if (selection == -1)
+    {
+        for (int i = 0; i < counter - 3;)
+        {
+            free(filename_ptrs[i++]);
+            free(ptr_array[i]);
+        }
+        return NULL;
+    }
+    u8 str[272];
+    strcpy(str, dir->name);
+    strcat(str, filename_ptrs[selection]);
+
+    FILE* file = fopen(str, "rb");
+
+    if (file == NULL)
+    {
+        menuWriteSingle("OOPS\n");
+        while (true) swiWaitForVBlank();
+    }
+
+    for (int i = 0; i < counter - 3;)
+    {
+        free(filename_ptrs[i++]);
         free(ptr_array[i]);
+    }
 
-    if (selection == -1) return NULL;
-
-    u8 name[28];
-    snprintf(name, sizeof(name), "%sdump%i.fd", dirr, locations[selection]);
-    return fopen(name, "rb");
+    return file;
 }
+
 /*
 u8 menuScreenshot()
 {
@@ -548,14 +626,14 @@ u8 menuMain(FILE** file)
                     FILE* newfile = NULL;
                     while (newfile == NULL)
                     {
-                        u8 sel = menuDirSelect();
-                        if (sel == 5)
+                        struct Directory dir = menuDirSelect();
+                        if (dir.dir == NULL)
                         {
                             if (newfile != NULL) fclose(newfile);
                             if (unloaded) loadFile(*file);
                             goto abort;
                         }
-                        newfile = menuFileSelect(sel);
+                        newfile = menuFileSelect(&dir);
                     }
                     unloaded = true;
                     if (loadFile(newfile))
@@ -599,9 +677,9 @@ int main()
     {
         while (file == NULL)
         {
-            u16 sel = menuDirSelect();
-            if (sel == 5) return 0;
-            file = menuFileSelect(sel);
+            struct Directory dir = menuDirSelect();
+            if (dir.dir == NULL) return 0;
+            file = menuFileSelect(&dir);
         }
         menuClear();
         if (loadFile(file)) break;

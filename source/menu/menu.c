@@ -19,8 +19,11 @@ void menuWrite(u8* text)
         switch (text[i])
         {
         case '\n':
-            menucursor = ((menucursor >> 5) + 1) << 5; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
+            {
+            s32 temp = ((menucursor >> 5)) << 5; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
+            if (temp != menucursor) menucursor = temp + 32;
             break;
+            }
         case ((u8)'\xF0') ... ((u8)'\xFF'):
             palette = text[i];
             break;
@@ -29,6 +32,12 @@ void menuWrite(u8* text)
             break;
         }
     }
+}
+
+void menuWriteSingle(u8* text)
+{
+    menuClear();
+    menuWrite(text);
 }
 
 void mapWriteRev(u8 tile, u8 palette)
