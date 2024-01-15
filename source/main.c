@@ -91,6 +91,12 @@ u32 numparams;
 u8* cmd = NULL;
 u32* param = NULL;
 
+// =======================================================================================================
+// not stored in file, but globals used by the below functions.
+
+s8 dispcapbank = -127;
+u16 sscount = 0;
+
 bool handlePNG(FILE* file)
 {
     fseek(file, 0, SEEK_SET);
@@ -167,7 +173,6 @@ void initVram(FILE* file)
     fread(vramcontrol, 1, 7, file);
     for (int i = 0; i < 7; i++)
     {
-        //if (i == 7) i++; // skip wramcnt
         vu8* address = (vu8*)((0x04000240 + i)); // vramcnt_a address
         *address = VRAM_ENABLE;
     }
@@ -181,24 +186,28 @@ void initVram(FILE* file)
         fread(vrambuffer, 2, 128*1024/2, file);
         memcpy(VRAM_A, vrambuffer, 128*1024);
     }
+    else dispcapbank = 0;
     // B
     if ((vramcontrol[1] & 0x83) == 0x83)
     {
         fread(vrambuffer, 2, 128*1024/2, file);
         memcpy(VRAM_B, vrambuffer, 128*1024);
     }
+    else dispcapbank = 1;
     // C
     if ((vramcontrol[2] & 0x87) == 0x83)
     {
         fread(vrambuffer, 2, 128*1024/2, file);
         memcpy(VRAM_C, vrambuffer, 128*1024);
     }
+    else dispcapbank = 2;
     // D
     if ((vramcontrol[3] & 0x87) == 0x83)
     {
         fread(vrambuffer, 2, 128*1024/2, file);
         memcpy(VRAM_D, vrambuffer, 128*1024);
     }
+    else dispcapbank = 3;
     // E
     if ((vramcontrol[4] & 0x87) == 0x83)
     {
@@ -221,8 +230,8 @@ void initVram(FILE* file)
     // actually init vramcnt
     for (int i = 0; i < 7; i++)
     {
-        //if (i == 7) i++;
         vu8* address = ((vu8*)(0x04000240 + i));
+        if (dispcapbank == i) continue; // skip re-initing bank if going to be used for display capture
         *address = vramcontrol[i];
     }
 }
@@ -340,14 +349,14 @@ void initFrameState(bool trustemu)
     GFX_FLUSH = swapbuffer;
 }
 
-void runGX()
+u32 runGX(bool finish)
 {
     for (u32 i = 0, j = 0; i < numcmds; i++)
     {   
         // handle zerodotdisp reg writes
         if (cmd[i] == 255)
             GFX_CUTOFF_DEPTH = param[j++];
-        else
+        else if (finish || cmd[i] != 0x50)
         {
             vu32* finaladdr = (vu32*)((u32)&GFX_FIFO + (cmd[i] << 2));
             if (paramcount[cmd[i]] != 0)
@@ -356,17 +365,19 @@ void runGX()
             else
                 *finaladdr = 0;
         }
+        else return param[j];
     }
+    return 0;
 }
 
-void runDump()
+u32 runDump(bool finish)
 {
     initFrameState(false);
 
     swiWaitForVBlank(); // wait for buffer swap to actually take place
 
     videoSetMode(MODE_0_3D);
-    runGX();
+    return runGX(finish);
 }
 
 bool loadFile(FILE* file)
@@ -393,8 +404,204 @@ bool loadFile(FILE* file)
     fread(cmd, 1, numcmds, file);
     fread(param, 4, numparams, file);
     
-    runDump();
+    runDump(true);
     return true;
+}
+
+void initDispCap()
+{
+    REG_DISPCAPCNT = DCAP_BANK(dispcapbank) | DCAP_SIZE(DCAP_SIZE_256x192) | DCAP_SRC_A(DCAP_SRC_A_3DONLY);
+}
+
+void transOverlay(u32 swapbuffer, bool pass2)
+{
+    u8 col = pass2 ? 23 : 15;
+
+    // reset matrixes to make this easier on me
+    for (int i = 0; i < 4; i++)
+    {
+        MATRIX_CONTROL = i;
+        MATRIX_IDENTITY = 0;
+    }
+
+    GFX_POLY_FORMAT = 3 << 6 | 1 << 16;
+    GFX_COLOR = col << 10 | col << 5 | col;
+    GFX_TEX_FORMAT = 0;
+
+    GFX_BEGIN = 1;
+    GFX_VERTEX16 = -32767 << 16 | -32767;
+    GFX_VERTEX16 = 0; 
+    GFX_VERTEX16 = -32767 << 16 | 32767;
+    GFX_VERTEX16 = 0; 
+    GFX_VERTEX16 = 32767 << 16 | 32767;
+    GFX_VERTEX16 = 0; 
+    GFX_VERTEX16 = 32767 << 16 | -32767;
+    GFX_VERTEX16 = 0;
+    GFX_FLUSH = swapbuffer;
+}
+
+void checkDiff(u8 fin, u8 ref, u8 comp, bool pass)
+{
+    if (!pass)
+    {
+        if (ref <= 15)
+            fin |= (ref != comp);
+        else if ((ref >= 32) && (ref <= 47))
+            fin &= (ref == comp);
+    }
+    else
+    {
+        if ((ref >= 16) && (ref <= 31))
+            fin |= (ref != comp);
+        else if (ref >= 48)
+            fin &= (ref == comp);
+    }
+}
+
+void initbuff(u8* ref, u8* buff)
+{
+    // size is always 256*192 so we dont need to pass along a bool for that
+    for (int i = 0; i < 192*256; i++)
+        if (ref[i] <= 31) buff[i] = false;
+        else buff[i] = true;
+}
+
+void doScreenshot(bool color18, bool bitmap)
+{
+    REG_DISPCAPCNT |= DCAP_ENABLE;
+
+    u16* bank;
+    FILE* pic;
+    if (dispcapbank == 0) bank = VRAM_A;
+    else if (dispcapbank == 1) bank = VRAM_B;
+    else if (dispcapbank == 2) bank = VRAM_C;
+    else if (dispcapbank == 3) bank = VRAM_D;
+    else return;
+
+    u8 name[11];
+    u8 ext[5];
+    if (bitmap) strcpy(ext, ".bmp");
+    else strcpy(ext, ".bin");
+
+    snprintf(name, 11, "cap%i%s", sscount, ext);
+    pic = fopen(name, "rb");
+    sscount++;
+    for (; pic != NULL; sscount++)
+    {
+        fclose(pic);
+        snprintf(name, 11, "cap%i%s", sscount, ext);
+        pic = fopen(name, "rb");
+    }
+    pic = fopen(name, "wb");
+
+    if (bitmap)
+    {
+        if(!color18)
+        {
+            u8 header[] = {0x42, 0x4D,   0x42, 0x80, 0x01, 0,   0, 0,   0, 0,   0x42, 0, 0, 0,
+            0x28, 0, 0, 0,   0x00, 0x01, 0, 0,   0xC0, 0, 0, 0,   1, 0,   0x10, 0,   3, 0, 0, 0,   0, 0xC0, 0, 0,   0, 1, 0, 0,   0, 1, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
+            0x1F, 0, 0, 0,   0xE0, 0x03, 0, 0,   0, 0x7C, 0, 0};
+            fwrite(header, 1, sizeof(header), pic);
+        }
+        else
+        {
+            u8 header[] = {0x42, 0x4D,   0x42, 0x00, 0x03, 0,   0, 0,   0, 0,   0x42, 0, 0, 0,
+            0x28, 0, 0, 0,   0x00, 0x01, 0, 0,   0xC0, 0, 0, 0,   1, 0,   0x20, 0,   3, 0, 0, 0,   0, 0xC0, 0, 0,   0, 1, 0, 0,   0, 1, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
+            0x3F, 0, 0, 0,   0xC0, 0x0F, 0, 0,   0, 0xF0, 0x03, 0}; // probably doesn't work?
+            fwrite(header, 1, sizeof(header), pic);
+        }
+    }
+
+    if (!color18) // 15 bit
+    {
+        while (REG_DISPCAPCNT & DCAP_ENABLE);
+
+        for (int y = 191; y >= 0; y--)
+            for (int x = 0; x < 256; x++)
+                fwrite(&bank[x + (256*y)], 1, 2, pic);
+    }
+    else
+    {
+        while (REG_DISPCAPCNT & DCAP_ENABLE);
+
+        u8 refr[192*256];
+        u8 refg[192*256];
+        u8 refb[192*256];
+        for (int y = 191; y >= 0; y--)
+            for (int x = 0; x < 256; x++)
+                if (!bitmap) fwrite(&bank[x + (256*y)], 1, 2, pic);
+                else
+                {
+                    u32 offset = x+(256*y);
+                    u16 c = bank[offset];
+                    refr[offset] = (c >> 10 << 1) & 0x3F;
+                    refg[offset] = (c >> 5 << 1) & 0x3F;
+                    refb[offset] = (c << 1) & 0x3F;
+                }
+
+        u32 swapbuffer = runGX(false);
+        transOverlay(swapbuffer, false);
+        REG_DISPCAPCNT |= DCAP_ENABLE;
+        while (REG_DISPCAPCNT & DCAP_ENABLE);
+        bool b6r[192*256];
+        bool b6g[192*256];
+        bool b6b[192*256];
+
+        initbuff(refr, b6r);
+        initbuff(refg, b6g);
+        initbuff(refb, b6b);
+
+        for (int y = 191; y >= 0; y--)
+            for (int x = 0; x < 256; x++)
+                if (!bitmap) fwrite(&bank[x + (256*y)], 1, 2, pic);
+                else
+                {
+                    u32 offset = x+(256*y);
+                    u16 c = bank[offset];
+                    u8 r = (c >> 10 << 1) & 0x3F;
+                    u8 g = (c >> 5 << 1) & 0x3F;
+                    u8 b = (c << 1) & 0x3F;
+
+                    checkDiff(b6r[offset], refr[offset], r, false);
+                    checkDiff(b6g[offset], refg[offset], g, false);
+                    checkDiff(b6b[offset], refb[offset], b, false);
+                }
+
+        swapbuffer = runGX(false);
+        transOverlay(swapbuffer, true);
+        REG_DISPCAPCNT |= DCAP_ENABLE;
+        while (REG_DISPCAPCNT & DCAP_ENABLE);
+
+        for (int y = 191; y >= 0; y--)
+            for (int x = 0; x < 256; x++)
+                if (!bitmap) fwrite(&bank[x + (256*y)], 1, 2, pic);
+                else
+                {
+                    u32 offset = x+(256*y);
+                    u16 c = bank[offset];
+                    u8 r = (c >> 10 << 1) & 0x3F;
+                    u8 g = (c >> 5 << 1) & 0x3F;
+                    u8 b = (c << 1) & 0x3F;
+
+                    checkDiff(b6r[offset], refr[offset], r, true);
+                    checkDiff(b6g[offset], refg[offset], g, true);
+                    checkDiff(b6b[offset], refb[offset], b, true);
+                }
+
+        if (bitmap)
+            for (int y = 191; y >= 0; y--)
+                for (int x = 0; x < 256; x++)
+                {
+                    u32 offset = x+(256*y);
+                    u8 r = (refr[offset] | b6r[offset]);
+                    u8 g = (refg[offset] | b6g[offset]);
+                    u8 b = (refb[offset] | b6b[offset]);
+                    u32 fin = r << 12 | g << 6 | b;
+                    fwrite(&fin, 1, sizeof(fin), pic);
+                }
+    }
+
+    fclose(pic);
 }
 
 struct Directory menuDirSelect()
@@ -591,11 +798,42 @@ FILE* menuFileSelect(struct Directory* dir)
     return file;
 }
 
-/*
-u8 menuScreenshot()
+
+void menuScreenshot()
 {
-    u8* ptr_array;
-}*/
+    u8* ptr_array[] =
+    {
+        str_menu_ss,
+        str_opt_ss_norm_bmp,
+        str_opt_ss_norm_raw,
+        str_opt_ss_full_bmp,
+        str_opt_ss_full_raw,
+        str_hint_bback,
+        str_hint_asel,
+    };
+    u8 selection = menuInputs(2, (struct InputIDs) {1,0,0}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
+    switch(selection)
+    {
+        case 1:
+            return;
+
+        case 2:
+            doScreenshot(false, true);
+            break;
+
+        case 3:
+            doScreenshot(false, false);
+            break;
+
+        case 4:
+            doScreenshot(true, true);
+            break;
+
+        case 5:
+            doScreenshot(true, false);
+            break;
+    }
+}
 
 u8 menuMain(FILE** file)
 {
@@ -606,7 +844,7 @@ u8 menuMain(FILE** file)
         str_opt_rerender,
         str_opt_gx,
         str_hint_rscreenshot,
-        str_hint_asel
+        str_hint_asel,
     };
 
     while (true)
@@ -615,7 +853,7 @@ u8 menuMain(FILE** file)
         switch(selection)
         {
             case 1: // R button - screenshot
-                //menuScreenshot();
+                menuScreenshot();
                 break;
 
             case 2: // change file
@@ -647,7 +885,7 @@ u8 menuMain(FILE** file)
                 break;
             }
             case 3: // rerender
-                runDump();
+                runDump(true);
                 break;
 
             case 4: // gx menu
@@ -685,6 +923,8 @@ int main()
         if (loadFile(file)) break;
         fclose(file);
     }
+
+    if (dispcapbank != -127) initDispCap();
 
     menuMain(&file);
 }

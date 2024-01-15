@@ -154,11 +154,11 @@ u16 menuInputs(u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 
         {
             return inputids.B;
         }
-        else if (inputids.X != 0 && keys & KEY_B && !(prevkeys & KEY_B))
+        else if (inputids.X != 0 && keys & KEY_X && !(prevkeys & KEY_X))
         {
             return inputids.X;
         }
-        else if (inputids.R != 0 && keys & KEY_B && !(prevkeys & KEY_B))
+        else if (inputids.R != 0 && keys & KEY_R && !(prevkeys & KEY_R))
         {
             return inputids.R;
         }
