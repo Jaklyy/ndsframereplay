@@ -440,27 +440,32 @@ void transOverlay(u32 swapbuffer, bool pass2)
     GFX_FLUSH = swapbuffer;
 }
 
-void checkDiff(u8 fin, u8 ref, u8 comp, bool pass)
+void checkDiff(u8* fin, u8 ref, u8 comp, bool pass)
 {
     if (!pass)
     {
         if (ref <= 15)
-            fin |= (ref != comp);
+            *fin |= (ref != comp);
         else if ((ref >= 32) && (ref <= 47))
-            fin &= (ref == comp);
+            *fin &= (ref == comp);
     }
     else
     {
         if ((ref >= 16) && (ref <= 31))
-            fin |= (ref != comp);
+            *fin |= (ref != comp);
         else if (ref >= 48)
-            fin &= (ref == comp);
+            *fin &= (ref == comp);
     }
+
+    /*if (ref <= 31)
+        *fin |= (ref != comp);
+    else
+        *fin |= (ref == comp);*/
 }
 
 void initbuff(u8* ref, u8* buff)
 {
-    // size is always 256*192 so we dont need to pass along a bool for that
+    // size is always 256*192 so we dont need to pass along a var for size
     for (int i = 0; i < 192*256; i++)
         if (ref[i] <= 31) buff[i] = false;
         else buff[i] = true;
@@ -468,6 +473,10 @@ void initbuff(u8* ref, u8* buff)
 
 void doScreenshot(bool color18, bool bitmap)
 {
+    if (sscount > 999)
+    {
+        return;
+    }
     REG_DISPCAPCNT |= DCAP_ENABLE;
 
     u16* bank;
@@ -483,6 +492,8 @@ void doScreenshot(bool color18, bool bitmap)
     if (bitmap) strcpy(ext, ".bmp");
     else strcpy(ext, ".bin");
 
+    chdir(fatGetDefaultCwd());
+
     snprintf(name, 11, "cap%i%s", sscount, ext);
     pic = fopen(name, "rb");
     sscount++;
@@ -491,6 +502,10 @@ void doScreenshot(bool color18, bool bitmap)
         fclose(pic);
         snprintf(name, 11, "cap%i%s", sscount, ext);
         pic = fopen(name, "rb");
+        if (sscount > 999)
+        {
+            return;
+        }
     }
     pic = fopen(name, "wb");
 
@@ -527,19 +542,19 @@ void doScreenshot(bool color18, bool bitmap)
         u8 refr[192*256];
         u8 refg[192*256];
         u8 refb[192*256];
-        for (int y = 191; y >= 0; y--)
+        for (int y = 0; y < 192; y++)
             for (int x = 0; x < 256; x++)
                 if (!bitmap) fwrite(&bank[x + (256*y)], 1, 2, pic);
                 else
                 {
                     u32 offset = x+(256*y);
                     u16 c = bank[offset];
-                    refr[offset] = (c >> 10 << 1) & 0x3F;
-                    refg[offset] = (c >> 5 << 1) & 0x3F;
-                    refb[offset] = (c << 1) & 0x3F;
+                    refr[offset] = (c >> 10 << 1) & 0x3E;
+                    refg[offset] = (c >> 5 << 1) & 0x3E;
+                    refb[offset] = (c << 1) & 0x3E;
                 }
 
-        u32 swapbuffer = runGX(false);
+        u32 swapbuffer = runDump(false);
         transOverlay(swapbuffer, false);
         REG_DISPCAPCNT |= DCAP_ENABLE;
         while (REG_DISPCAPCNT & DCAP_ENABLE);
@@ -551,41 +566,41 @@ void doScreenshot(bool color18, bool bitmap)
         initbuff(refg, b6g);
         initbuff(refb, b6b);
 
-        for (int y = 191; y >= 0; y--)
+        for (int y = 0; y < 192; y++)
             for (int x = 0; x < 256; x++)
                 if (!bitmap) fwrite(&bank[x + (256*y)], 1, 2, pic);
                 else
                 {
                     u32 offset = x+(256*y);
                     u16 c = bank[offset];
-                    u8 r = (c >> 10 << 1) & 0x3F;
-                    u8 g = (c >> 5 << 1) & 0x3F;
-                    u8 b = (c << 1) & 0x3F;
+                    u8 r = (c >> 10 << 1) & 0x3E;
+                    u8 g = (c >> 5 << 1) & 0x3E;
+                    u8 b = (c << 1) & 0x3E;
 
-                    checkDiff(b6r[offset], refr[offset], r, false);
-                    checkDiff(b6g[offset], refg[offset], g, false);
-                    checkDiff(b6b[offset], refb[offset], b, false);
+                    checkDiff(&b6r[offset], refr[offset], r, false);
+                    checkDiff(&b6g[offset], refg[offset], g, false);
+                    checkDiff(&b6b[offset], refb[offset], b, false);
                 }
 
-        swapbuffer = runGX(false);
+        swapbuffer = runDump(false);
         transOverlay(swapbuffer, true);
         REG_DISPCAPCNT |= DCAP_ENABLE;
         while (REG_DISPCAPCNT & DCAP_ENABLE);
 
-        for (int y = 191; y >= 0; y--)
+        for (int y = 0; y < 192; y++)
             for (int x = 0; x < 256; x++)
                 if (!bitmap) fwrite(&bank[x + (256*y)], 1, 2, pic);
                 else
                 {
                     u32 offset = x+(256*y);
                     u16 c = bank[offset];
-                    u8 r = (c >> 10 << 1) & 0x3F;
-                    u8 g = (c >> 5 << 1) & 0x3F;
-                    u8 b = (c << 1) & 0x3F;
+                    u8 r = (c >> 10 << 1) & 0x3E;
+                    u8 g = (c >> 5 << 1) & 0x3E;
+                    u8 b = (c << 1) & 0x3E;
 
-                    checkDiff(b6r[offset], refr[offset], r, true);
-                    checkDiff(b6g[offset], refg[offset], g, true);
-                    checkDiff(b6b[offset], refb[offset], b, true);
+                    checkDiff(&b6r[offset], refr[offset], r, true);
+                    checkDiff(&b6g[offset], refg[offset], g, true);
+                    checkDiff(&b6b[offset], refb[offset], b, true);
                 }
 
         if (bitmap)
@@ -593,76 +608,56 @@ void doScreenshot(bool color18, bool bitmap)
                 for (int x = 0; x < 256; x++)
                 {
                     u32 offset = x+(256*y);
-                    u8 r = (refr[offset] | b6r[offset]);
-                    u8 g = (refg[offset] | b6g[offset]);
-                    u8 b = (refb[offset] | b6b[offset]);
+                    u8 r = (refr[offset] | ((refr[offset] > 31) ? !b6r[offset] : b6r[offset]));
+                    u8 g = (refg[offset] | ((refg[offset] > 31) ? !b6g[offset] : b6g[offset]));
+                    u8 b = (refb[offset] | ((refb[offset] > 31) ? !b6b[offset] : b6b[offset]));
                     u32 fin = r << 12 | g << 6 | b;
                     fwrite(&fin, 1, sizeof(fin), pic);
                 }
     }
 
     fclose(pic);
+    runDump(true);
 }
 
-struct Directory menuDirSelect()
+bool menuDirSelect()
 {    
+    bool usingfoldersd = false;
+    bool usingfolderfat = false;
+
     // test console sd
-    struct Directory sddir;
-    sddir.dir = opendir("sd:/framedumps");
-    if (sddir.dir == NULL)
-    {
-        sddir.dir = opendir("sd:/");
-        strcpy(sddir.name, "sd:/");
-    }
-    else strcpy(sddir.name, "sd:/framedumps/");
+    DIR* sddir = opendir("sd:/framedumps");
+    if (sddir == NULL) sddir = opendir("sd:/");
+    else usingfoldersd = true;
 
     // test flash cart sd
-    struct Directory fatdir;
-    fatdir.dir = opendir("fat:/framedumps");
-    if (fatdir.dir == NULL)
-    {
-        fatdir.dir = opendir("fat:/");
-        strcpy(fatdir.name, "fat:/");
-    }
-    else strcpy(fatdir.name, "fat:/framedumps/");
+    DIR* fatdir = opendir("fat:/framedumps");
+    if (fatdir == NULL) fatdir = opendir("fat:/");
+    else usingfolderfat = true;
 
     // test romfs
-    struct Directory nitrodir;
-    nitrodir.dir = opendir("nitro:/");
-    strcpy(nitrodir.name, "nitro:/");
+    DIR* nitrodir = opendir("nitro:/");
 
-    // count found dirs
-    u8 count = (nitrodir.dir != NULL) + (fatdir.dir != NULL) + (sddir.dir != NULL);
-
-    if (count <= 1)
+    // check if any dir was found.
+    if ((nitrodir != NULL) && (fatdir != NULL) && (sddir != NULL))
     {
-        // if none opened
-        if (count == 0)
-        {
-            menuWriteSingle(str_err_dir);
-            while(true) swiWaitForVBlank();
-        }
-        else
-        {
-            if (nitrodir.dir != NULL) return nitrodir;
-            if (fatdir.dir != NULL) return fatdir;
-            if (sddir.dir != NULL) return sddir;
-        }
+        menuWriteSingle(str_err_dir);
+        while(true) swiWaitForVBlank();
     }
 
     u8* ptr_array[6] = {[0] = str_menu_seldir};
     int i = 1;
-    if (nitrodir.dir != NULL)
+    if (nitrodir != NULL)
     {
         ptr_array[i] = str_opt_nitro;
         i++;
     }
-    if (sddir.dir != NULL)
+    if (sddir != NULL)
     {
         ptr_array[i] = str_opt_sd;
         i++;
     }
-    if (fatdir.dir != NULL)
+    if (fatdir != NULL)
     {
         ptr_array[i] = str_opt_fc;
         i++;
@@ -675,57 +670,71 @@ struct Directory menuDirSelect()
     i++;
 
     u16 selection = menuInputs(0, (struct InputIDs) {3,0,0}, 1, 1, 1, i, ptr_array);
-    if (selection == 3) 
+    if (selection == 3)
     {
-        struct Directory nuldir;
-        nuldir.dir = NULL;
-        closedir(fatdir.dir);
-        closedir(sddir.dir);
-        closedir(nitrodir.dir);
-        return nuldir;
+        closedir(nitrodir);
+        closedir(fatdir);
+        closedir(sddir);
+        return false;
     }
     else if (selection == 2)
     {
-        closedir(sddir.dir);
-        closedir(nitrodir.dir);
-        return fatdir;
+        closedir(nitrodir);
+        closedir(fatdir);
+        closedir(sddir);
+        chdir((usingfolderfat ? "fat:/framedumps" : "fat:/"));
+        return true;
     }
     else if (selection == 1)
     {
-        if (nitrodir.dir == NULL)
+        if (nitrodir == NULL || sddir == NULL)
         {
-            closedir(sddir.dir);
-            return fatdir;
+            closedir(nitrodir);
+            closedir(fatdir);
+            closedir(sddir);
+            chdir((usingfolderfat ? "fat:/framedumps" : "fat:/"));
+            return true;
         }
-        else if (sddir.dir == NULL)
+        else // fat dir
         {
-            closedir(nitrodir.dir);
-            return fatdir;
-        }
-        else
-        {
-            closedir(nitrodir.dir);
-            return sddir;
+            closedir(nitrodir);
+            closedir(sddir);
+            chdir((usingfoldersd ? "sd:/framedumps" : "sd:/"));
+            return true;
         }
     }
-    else if (nitrodir.dir == NULL)
+    else // sel 0
     {
-        closedir(fatdir.dir);
-        return sddir;
-    }
-    else
-    {
-        closedir(fatdir.dir);
-        closedir(sddir.dir);
-        return nitrodir;
+        if (nitrodir != NULL)
+        {
+            closedir(nitrodir);
+            closedir(fatdir);
+            closedir(sddir);
+            chdir("nitro:/");
+            return true;
+        }
+        else if (sddir != NULL)
+        {
+            closedir(fatdir);
+            closedir(sddir);
+            chdir((usingfoldersd ? "sd:/framedumps" : "sd:/"));
+            return true;
+        }
+        else // only fat remains
+        {
+            closedir(fatdir);
+            chdir((usingfolderfat ? "fat:/framedumps" : "fat:/"));
+            return true;
+        }
     }
 }
 
-FILE* menuFileSelect(struct Directory* dir)
+FILE* menuFileSelect()
 {
     u8* ptr_array[25];
     u8* filename_ptrs[22];
     ptr_array[0] = str_menu_selfile;
+    DIR* dir = opendir(".");
 
     u8 counter = 1;
     for (int i = 0; counter < 23+1 && i < 256; i++)
@@ -733,7 +742,7 @@ FILE* menuFileSelect(struct Directory* dir)
         char png[] = ".png";
         char ndsfd[] = ".ndsfd";
 
-        struct dirent* dat = readdir(dir->dir);
+        struct dirent* dat = readdir(dir);
         if (dat == NULL) break;
 
         char* loc = strrchr(dat->d_name, '.');
@@ -748,7 +757,7 @@ FILE* menuFileSelect(struct Directory* dir)
         }
     }
 
-    closedir(dir->dir);
+    closedir(dir);
 
     if (counter == 1)
     {
@@ -777,11 +786,8 @@ FILE* menuFileSelect(struct Directory* dir)
         }
         return NULL;
     }
-    u8 str[272];
-    strcpy(str, dir->name);
-    strcat(str, filename_ptrs[selection]);
 
-    FILE* file = fopen(str, "rb");
+    FILE* file = fopen(filename_ptrs[selection], "rb");
 
     if (file == NULL)
     {
@@ -864,14 +870,14 @@ u8 menuMain(FILE** file)
                     FILE* newfile = NULL;
                     while (newfile == NULL)
                     {
-                        struct Directory dir = menuDirSelect();
-                        if (dir.dir == NULL)
+                        
+                        if (!menuDirSelect())
                         {
-                            if (newfile != NULL) fclose(newfile);
+                            fclose(newfile);
                             if (unloaded) loadFile(*file);
                             goto abort;
                         }
-                        newfile = menuFileSelect(&dir);
+                        newfile = menuFileSelect();
                     }
                     unloaded = true;
                     if (loadFile(newfile))
@@ -915,9 +921,8 @@ int main()
     {
         while (file == NULL)
         {
-            struct Directory dir = menuDirSelect();
-            if (dir.dir == NULL) return 0;
-            file = menuFileSelect(&dir);
+            if (!menuDirSelect()) return 0;
+            file = menuFileSelect();
         }
         menuClear();
         if (loadFile(file)) break;
