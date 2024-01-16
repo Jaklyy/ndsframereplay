@@ -444,23 +444,18 @@ void checkDiff(u8* fin, u8 ref, u8 comp, bool pass)
 {
     if (!pass)
     {
-        if (ref <= 15)
-            *fin |= (ref != comp);
-        else if ((ref >= 32) && (ref <= 47))
-            *fin &= (ref == comp);
+        if (ref <= (15 >> 1))
+            *fin = (ref != comp);
+        else if ((ref >= (32 >> 1)) && (ref <= (47 >> 1)))
+            *fin = (ref == comp);
     }
     else
     {
-        if ((ref >= 16) && (ref <= 31))
-            *fin |= (ref != comp);
-        else if (ref >= 48)
-            *fin &= (ref == comp);
+        if ((ref >= (16 >> 1)) && (ref <= (31 >> 1)))
+            *fin = (ref != comp);
+        else if (ref >= (48 >> 1))
+            *fin = (ref == comp);
     }
-
-    /*if (ref <= 31)
-        *fin |= (ref != comp);
-    else
-        *fin |= (ref == comp);*/
 }
 
 void initbuff(u8* ref, u8* buff)
@@ -549,9 +544,9 @@ void doScreenshot(bool color18, bool bitmap)
                 {
                     u32 offset = x+(256*y);
                     u16 c = bank[offset];
-                    refr[offset] = (c >> 10 << 1) & 0x3E;
-                    refg[offset] = (c >> 5 << 1) & 0x3E;
-                    refb[offset] = (c << 1) & 0x3E;
+                    refr[offset] = (c >> 10) & 0x1F;
+                    refg[offset] = (c >> 5) & 0x1F;
+                    refb[offset] = c & 0x1F;
                 }
 
         u32 swapbuffer = runDump(false);
@@ -562,9 +557,9 @@ void doScreenshot(bool color18, bool bitmap)
         bool b6g[192*256];
         bool b6b[192*256];
 
-        initbuff(refr, b6r);
-        initbuff(refg, b6g);
-        initbuff(refb, b6b);
+        //initbuff(refr, b6r);
+        //initbuff(refg, b6g);
+        //initbuff(refb, b6b);
 
         for (int y = 0; y < 192; y++)
             for (int x = 0; x < 256; x++)
@@ -573,9 +568,9 @@ void doScreenshot(bool color18, bool bitmap)
                 {
                     u32 offset = x+(256*y);
                     u16 c = bank[offset];
-                    u8 r = (c >> 10 << 1) & 0x3E;
-                    u8 g = (c >> 5 << 1) & 0x3E;
-                    u8 b = (c << 1) & 0x3E;
+                    u8 r = (c >> 10) & 0x1F;
+                    u8 g = (c >> 5) & 0x1F;
+                    u8 b = c & 0x1F;
 
                     checkDiff(&b6r[offset], refr[offset], r, false);
                     checkDiff(&b6g[offset], refg[offset], g, false);
@@ -594,9 +589,9 @@ void doScreenshot(bool color18, bool bitmap)
                 {
                     u32 offset = x+(256*y);
                     u16 c = bank[offset];
-                    u8 r = (c >> 10 << 1) & 0x3E;
-                    u8 g = (c >> 5 << 1) & 0x3E;
-                    u8 b = (c << 1) & 0x3E;
+                    u8 r = (c >> 10) & 0x1F;
+                    u8 g = (c >> 5) & 0x1F;
+                    u8 b = c & 0x1F;
 
                     checkDiff(&b6r[offset], refr[offset], r, true);
                     checkDiff(&b6g[offset], refg[offset], g, true);
@@ -608,9 +603,9 @@ void doScreenshot(bool color18, bool bitmap)
                 for (int x = 0; x < 256; x++)
                 {
                     u32 offset = x+(256*y);
-                    u8 r = (refr[offset] | ((refr[offset] > 31) ? !b6r[offset] : b6r[offset]));
-                    u8 g = (refg[offset] | ((refg[offset] > 31) ? !b6g[offset] : b6g[offset]));
-                    u8 b = (refb[offset] | ((refb[offset] > 31) ? !b6b[offset] : b6b[offset]));
+                    u8 r = (refr[offset] << 1) | b6r[offset];
+                    u8 g = (refg[offset] << 1) | b6g[offset];
+                    u8 b = (refb[offset] << 1) | b6b[offset];
                     u32 fin = r << 12 | g << 6 | b;
                     fwrite(&fin, 1, sizeof(fin), pic);
                 }
