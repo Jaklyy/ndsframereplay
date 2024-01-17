@@ -118,12 +118,12 @@ void menuRender(u8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** stri
 
     for (int i = 0; i < footerL; i++)
     {
-        menucursor = MAP_AREA - (MAP_WIDTH * (footerL - i));
+        menucursor = MAP_AREA - (MAP_WIDTH * (footerL + i));
         menuWrite(strings[j++]);
     }
     for (int i = 0; i < footerR; i++)
     {
-        menucursor = MAP_AREA - (MAP_WIDTH * (footerR - i + 1) - 1);
+        menucursor = MAP_AREA - (MAP_WIDTH * (footerR + i - 1));
         menuWriteRev(strings[j++]);
     }
 }

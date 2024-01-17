@@ -86,7 +86,7 @@ u32* param = NULL;
 // =======================================================================================================
 // not stored in file, but globals used by the below functions.
 
-s8 dispcapbank = -127;
+u8 dispcapbank = 0xFF;
 u16 sscount = 0;
 
 void waitForInput()
@@ -160,6 +160,7 @@ bool verifyHeader(FILE* file)
 void initVars(FILE* file)
 {
     // init most variables
+    // todo: could this be done in one fread with a struct?
     fread(&disp3dcnt, 1, sizeof(disp3dcnt), file);
     fread(edgecolor, 1, sizeof(edgecolor), file);
     fread(&alphatest, 1, sizeof(alphatest), file);
@@ -200,70 +201,72 @@ void initVars(FILE* file)
 
 void initVram(FILE* file)
 {
-    // turn vram on and set to lcdc mode for easy writing
+    // nab vramcontrols
     fread(vramcontrol, 1, 7, file);
-    for (int i = 0; i < 7; i++)
-    {
-        vu8* address = (vu8*)((0x04000240 + i)); // vramcnt_a address
-        *address = VRAM_ENABLE;
-    }
 
     // init vram banks
     // ignore H & I because irrelevant to 3d gfx
+    // todo: avoid activating the first 4 banks if unneeded?
     u16 vrambuffer[128*1024/2];
     // A
+    VRAM_A_CR = VRAM_ENABLE;
     if ((vramcontrol[0] & 0x83) == 0x83)
     {
         fread(vrambuffer, 2, 128*1024/2, file);
         memcpy(VRAM_A, vrambuffer, 128*1024);
+        VRAM_A_CR = vramcontrol[0];
     }
     else dispcapbank = 0;
     // B
+    VRAM_B_CR = VRAM_ENABLE;
     if ((vramcontrol[1] & 0x83) == 0x83)
     {
         fread(vrambuffer, 2, 128*1024/2, file);
         memcpy(VRAM_B, vrambuffer, 128*1024);
+        VRAM_B_CR = vramcontrol[1];
     }
     else dispcapbank = 1;
     // C
+    VRAM_C_CR = VRAM_ENABLE;
     if ((vramcontrol[2] & 0x87) == 0x83)
     {
         fread(vrambuffer, 2, 128*1024/2, file);
         memcpy(VRAM_C, vrambuffer, 128*1024);
+        VRAM_C_CR = vramcontrol[2];
     }
     else dispcapbank = 2;
     // D
+    VRAM_D_CR = VRAM_ENABLE;
     if ((vramcontrol[3] & 0x87) == 0x83)
     {
         fread(vrambuffer, 2, 128*1024/2, file);
         memcpy(VRAM_D, vrambuffer, 128*1024);
+        VRAM_D_CR = vramcontrol[3];
     }
     else dispcapbank = 3;
     // E
     if ((vramcontrol[4] & 0x87) == 0x83)
     {
+        VRAM_E_CR = VRAM_ENABLE;
         fread(vrambuffer, 2, 64*1024/2, file);
         memcpy(VRAM_E, vrambuffer, 64*1024);
+        VRAM_E_CR = vramcontrol[4];
     }
     // F
     if ((vramcontrol[5] & 0x87) == 0x83)
     {
+        VRAM_F_CR = VRAM_ENABLE;
         fread(vrambuffer, 2, 16*1024/2, file);
         memcpy(VRAM_F, vrambuffer, 16*1024);
+        VRAM_F_CR = vramcontrol[5];
     }
     // G
     if ((vramcontrol[6] & 0x87) == 0x83)
     {
+        VRAM_G_CR = VRAM_ENABLE;
         fread(vrambuffer, 2, 16*1024/2, file);
         memcpy(VRAM_G, vrambuffer, 16*1024);
-    }
-
-    // actually init vramcnt
-    for (int i = 0; i < 7; i++)
-    {
-        vu8* address = ((vu8*)(0x04000240 + i));
-        if (dispcapbank == i) continue; // skip re-initing bank if going to be used for display capture
-        *address = vramcontrol[i];
+        VRAM_G_CR = vramcontrol[6];
     }
 }
 
@@ -477,7 +480,7 @@ void transOverlay(u32 swapbuffer, bool pass2)
     GFX_FLUSH = swapbuffer;
 }
 
-void checkDiff(u8* fin, u8 ref, u8 comp, bool pass)
+void checkDiff(bool* fin, u8 ref, u8 comp, bool pass)
 {
     if (!pass)
     {
@@ -495,41 +498,31 @@ void checkDiff(u8* fin, u8 ref, u8 comp, bool pass)
     }
 }
 
-void initbuff(u8* ref, u8* buff)
-{
-    // size is always 256*192 so we dont need to pass along a var for size
-    for (int i = 0; i < 192*256; i++)
-        if (ref[i] <= 31) buff[i] = false;
-        else buff[i] = true;
-}
-
 void doScreenshot(bool color18, bool bitmap)
 {
     if (sscount > 999) // abort if too many screen shots
     {
+        menuWriteSingle(str_err_toomanyss);
         waitForInput();
         return;
     }
 
     u16* bank;
     FILE* pic;
-    // find a free bank to use
-    if (dispcapbank == 0) bank = VRAM_A;
-    else if (dispcapbank == 1) bank = VRAM_B;
-    else if (dispcapbank == 2) bank = VRAM_C;
-    else if (dispcapbank == 3) bank = VRAM_D;
-    else // abort if no free bank is available
+    if (dispcapbank == 0xFF) // abort if no free bank is available
     {
         menuWriteSingle(str_err_nofreebank);
         waitForInput();
         return;
     }
+    // convert from bank number to bank address
+    bank = (u16*)(0x6800000 + (0x20000 * dispcapbank));
     REG_DISPCAPCNT |= DCAP_ENABLE; // enable display capture
 
     u8 name[11];
     u8 ext[5];
-    if (bitmap) strcpy(ext, ".bmp");
-    else strcpy(ext, ".bin");
+    if (bitmap) memcpy(ext, ".bmp", 5);
+    else memcpy(ext, ".bin", 5);
 
     chdir(fatGetDefaultCwd());
 
@@ -545,7 +538,7 @@ void doScreenshot(bool color18, bool bitmap)
         pic = fopen(name, "rb");
         if (sscount > 999)
         {
-            menuWriteSingle(str_err_nofreebank);
+            menuWriteSingle(str_err_toomanyss);
             waitForInput();
             return;
         }
@@ -799,9 +792,10 @@ FILE* menuFileSelect()
         {
             ptr_array[counter] = malloc(33);
             filename_ptrs[counter-1] = malloc(255);
-            strcpy(filename_ptrs[counter-1], dat->d_name);
-            strncpy(ptr_array[counter], dat->d_name, 31);
-            strcat(ptr_array[counter++], "\n"); // also ensures the string ends with a null character
+            memcpy(filename_ptrs[counter-1], dat->d_name, 255);
+            memcpy(ptr_array[counter], dat->d_name, 31);
+            strcat(ptr_array[counter], "\n"); // also ensures the string ends with a null character
+            counter++;
         }
     }
 
@@ -821,11 +815,10 @@ FILE* menuFileSelect()
 
     if (selection == -1)
     {
-        for (int i = 0; i < counter - 3;)
+        for (int i = 0; i < counter - 3; i++)
         {
             free(filename_ptrs[i]);
-            i++;
-            free(ptr_array[i]);
+            free(ptr_array[i+1]);
         }
         return NULL;
     }
@@ -838,12 +831,10 @@ FILE* menuFileSelect()
         while (true) swiWaitForVBlank();
     }
     
-    // this feels like such a janky way to do this but i think it checks out?
-    for (int i = 0; i < counter - 3;)
+    for (int i = 0; i < counter - 3; i++)
     {
         free(filename_ptrs[i]);
-        i++;
-        free(ptr_array[i]);
+        free(ptr_array[i+1]);
     }
 
     return file;
@@ -896,6 +887,7 @@ u8 menuMain(FILE** file)
         switch(selection)
         {
             case 1: // R button - screenshot
+                // todo: allow for disabling screenshot button if they aren't possible
                 menuScreenshot();
                 break;
 
@@ -916,6 +908,7 @@ u8 menuMain(FILE** file)
                         }
                         newfile = menuFileSelect();
                     }
+                    menuClear();
                     unloaded = true;
                     if (loadFile(newfile))
                     {
@@ -967,7 +960,7 @@ int main()
     }
 
     // initialize display capture
-    if (dispcapbank != -127) initDispCap();
+    if (dispcapbank != 0xFF) initDispCap();
 
     menuMain(&file);
 }

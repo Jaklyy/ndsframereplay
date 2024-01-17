@@ -45,6 +45,7 @@ u8 str_hint_rscreenshot[] = "\xF2""R: SCREENSHOT""\xF2";
 // menu errors
 u8 str_err_dir[] =          "\xF1""ERROR: UNABLE TO OPEN DIRECTORY\nPLEASE TURN OFF THE SYSTEM\n";
 u8 str_err_file[] =         "\xF1""ERROR: NO FILES FOUND\nTRY A DIFFERENT FOLDER\n";
+u8 str_err_toomanyss[] =    "\xF1""ERROR: TOO MANY SCREENSHOTS\n";
 u8 str_err_nofreebank[] =   "\xF1""ERROR: NO BANK AVAILABLE\nFOR DISPLAY CAPTURE\n";
 u8 str_err_headerfail[] =   "\xF1""ERROR: FILE HEADER INVALID\n";
 u8 str_err_oldver[] =       "\xF1""ERROR: FILE TOO OLD TO LOAD\n";
