@@ -26,8 +26,8 @@ u8 str_opt_swapbuffer[] =   "\xF0""FORCE SWAP BUFFERS\n";
 // gx menu
 
 // screenshotmenu 
-u8 str_opt_ss_full_bmp[] =  "\xF0""666 18 BIT BMP\n";
-u8 str_opt_ss_full_raw[] =  "\xF0""666 18 BIT RAW\n";
+u8 str_opt_ss_full_bmp[] =  "\xF0""666 18 BIT BMP (EXPERIMENTAL)\n";
+u8 str_opt_ss_full_raw[] =  "\xF0""666 18 BIT RAW (EXPERIMENTAL)\n";
 u8 str_opt_ss_norm_bmp[] =  "\xF0""555 16 BIT BMP\n";
 u8 str_opt_ss_norm_raw[] =  "\xF0""555 16 BIT RAW\n";
 
@@ -45,6 +45,11 @@ u8 str_hint_rscreenshot[] = "\xF2""R: SCREENSHOT""\xF2";
 // menu errors
 u8 str_err_dir[] =          "\xF1""ERROR: UNABLE TO OPEN DIRECTORY\nPLEASE TURN OFF THE SYSTEM\n";
 u8 str_err_file[] =         "\xF1""ERROR: NO FILES FOUND\nTRY A DIFFERENT FOLDER\n";
+u8 str_err_nofreebank[] =   "\xF1""ERROR: NO BANK AVAILABLE\nFOR DISPLAY CAPTURE\n";
+u8 str_err_headerfail[] =   "\xF1""ERROR: FILE HEADER INVALID\n";
+u8 str_err_oldver[] =       "\xF1""ERROR: FILE TOO OLD TO LOAD\n";
+u8 str_err_timetravel[] =   "\xF1""ERROR: FILE FROM FUTURE\nCHECK FOR A NEW VERSION\n";
+
 // stuff i haven't put anywhere yet-
 u8 str_gx[] =               "\xF0""GX: 0x";
 u8 str_cmd[] =              "\xF0""CMD: ";
@@ -92,7 +97,7 @@ u8 str_cmds[256][10] =
 [ZDotDisp] =   "\xF0""0DOTDISP",
 };
 
-u8 str_matrix[][89] =
+u8 str_matrix[][8] =
 {
     "PRJ MTX",
     "POS MTX",
@@ -100,7 +105,7 @@ u8 str_matrix[][89] =
     "TEX MTX",
 };
 
-u8 str_dispcnt[][13] =
+u8 str_dispcnt[][12] =
 {
     " TEXTURES: ",
     "  SHADING: ",

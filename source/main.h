@@ -5,6 +5,8 @@
 #ifndef MAIN_H
 #define MAIN_H
 
+#define CUR_FD_REV 0
+
 enum Cmd_IDs
 {
     //Nop = 0, // not stored

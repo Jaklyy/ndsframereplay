@@ -11,10 +11,18 @@
 
 
 
+
 // file structure:
 // note: data can optionally be embedded into a png, if so, it should be done in a chunk with the name: "ndSF"
+
 // Header:
-u8 compressiontype; // currently unused, should always be set to 0 (uncompressed) (this byte should not be compressed)
+// header should remain uncompressed.
+
+/*
+5 bytes arbitrary header -- should always be "NDSFD" (maybe we'll add DSIFD in the future if any key dsi specific quirks are discovered?)
+2 bytes version -- check main.h for CUR_FD_REV define
+1 byte compressiontype -- currently unused, should always be set to 0 (uncompressed)
+*/
 
 // global variables:
 // should be saved when registers are latched (ie. right before rendering)
@@ -27,12 +35,6 @@ u32 fogcolor;
 u16 fogoffset;
 u8 fogtable[32];
 u16 toontable[32];
-
-// track whether this one specific register has been written to, because i know for a fact melonDS inits it incorrectly.
-// implementation detail: this bool is stored as a whole byte, skipping proper implementation of it is possible by simply writing an 0x01 or 0xFF byte.
-// other write tracking bits *were* implemented and could be reimplemented, should demand for it exist.
-// they were removed for the time being due to it overcomplicating implementation greatly for fairly limited benefits.
-bool zdotdisp_track;
 
 // initial state variables:
 // should be saved before the first command is sent
@@ -51,17 +53,6 @@ u32 posmtx[16];
 u32 vecmtx[16];
 u32 texmtx[16];
 u32 matrixmode;
-/*u32 normal; // init for normals scrapped
-u32 normpolyattr;
-u32 normtexmtx[16];
-u32 normvecmtx[16];
-u32 normdiffambi;
-u32 normspecemis;
-u32 normtexparams;
-u32 normshininess[32];
-u32 normlightvec[4];
-u32 normlightvecvecmtx[4][16];
-u32 normlightcolor[4];*/
 u32 polygon;
 u32 vtxxy;
 u16 vtxz;
@@ -72,13 +63,13 @@ u32 diffambi;
 u32 specemis;
 u32 shininess[32];
 u32 lightvec[4];
-//u32 lightvecvecmtx[4][16]; also scrapped
 u32 lightcolor[4];
 u32 swapbuffer;
 u8 vramcontrol[7]; // only 7 are actually saved/loaded/used. banks h and i are ignored
+
 // vram state:
 // (up to) 608 KiB of vram state :DDDDD
-// note: vram state is ONLY saved/loaded for ACTIVE vram banks that're being used for 3d textures
+// note: vram state is ONLY saved/loaded for ACTIVE vram banks that're being used for 3d textures/texture palettes
 // (ie. last bit of vramcnt must be set and the value of the mst must be 3).
 // (additionally banks H and I are ignored due to not being allocatable to the 3d engine).
 
@@ -87,7 +78,8 @@ u32 numcmds;
 u32 numparams;
 
 // only store a maximum of 500KB
-// nops and vec/box tests should not be added to any of these trackers
+// cmds should be stored in one consecutive block before all params are stored.
+// nops and vec/box tests should not be added to any of these trackers (file a bug report if this should be changed)
 u8* cmd = NULL;
 u32* param = NULL;
 
@@ -96,6 +88,21 @@ u32* param = NULL;
 
 s8 dispcapbank = -127;
 u16 sscount = 0;
+
+void waitForInput()
+{
+    scanKeys();
+    u16 prevkeys = keysHeld();
+    while(true)
+    {
+        scanKeys();
+        u16 keys = keysHeld();
+        if ((keys & KEY_START && !(prevkeys & KEY_START)) || (keys & KEY_A && !(prevkeys & KEY_A)) || (keys & KEY_B && !(prevkeys & KEY_B)))
+            return;
+        prevkeys = keys;
+        swiWaitForVBlank();
+    }
+}
 
 bool handlePNG(FILE* file)
 {
@@ -123,11 +130,36 @@ bool handlePNG(FILE* file)
     }
 }
 
+bool verifyHeader(FILE* file)
+{
+    u8 header[5];
+    fread(header, 1, sizeof(header), file);
+    if (memcmp(header, "NDSFD", sizeof(header)) != 0)
+    {
+        menuWriteSingle(str_err_headerfail);
+        waitForInput();
+        return false;
+    }
+    u16 version;
+    fread(&version, 1 , sizeof(version), file);
+    if (version < CUR_FD_REV)
+    {
+        menuWriteSingle(str_err_oldver);
+        waitForInput();
+        return false;
+    }
+    else if (version > CUR_FD_REV)
+    {
+        menuWriteSingle(str_err_timetravel);
+        waitForInput();
+        return false;
+    }
+    return true;
+}
+
 void initVars(FILE* file)
 {
     // init most variables
-    fread(&compressiontype, 1, sizeof(compressiontype), file);
-
     fread(&disp3dcnt, 1, sizeof(disp3dcnt), file);
     fread(edgecolor, 1, sizeof(edgecolor), file);
     fread(&alphatest, 1, sizeof(alphatest), file);
@@ -138,7 +170,6 @@ void initVars(FILE* file)
     fread(fogtable, 1, sizeof(fogtable), file);
     fread(toontable, 1, sizeof(toontable), file);
 
-    fread(&zdotdisp_track, 1, 1, file);
     fread(&zdotdisp, 1, sizeof(zdotdisp), file);
     fread(&polyattr, 1, sizeof(polyattr), file);
     fread(&polyattrunset, 1, sizeof(polyattrunset), file);
@@ -256,10 +287,10 @@ void initGlobals()
     }
 }
 
-void initFrameState(bool trustemu)
+void initFrameState()
 {
     // init frame state
-    if (zdotdisp_track || trustemu) GFX_CUTOFF_DEPTH = zdotdisp;
+    GFX_CUTOFF_DEPTH = zdotdisp;
     GFX_VIEWPORT = viewport;
     GFX_COLOR = vtxcolor;
     GFX_DIFFUSE_AMBIENT = diffambi;
@@ -372,7 +403,7 @@ u32 runGX(bool finish)
 
 u32 runDump(bool finish)
 {
-    initFrameState(false);
+    initFrameState();
 
     swiWaitForVBlank(); // wait for buffer swap to actually take place
 
@@ -385,6 +416,12 @@ bool loadFile(FILE* file)
     if (!handlePNG(file)) // probably shouldn't be done if the file isn't expected to be a png but im too lazy to rework this to handle that properly
         return false;
 
+    if (!verifyHeader(file)) // check if header is valid
+        return false;
+    u8 compressiontype;
+    fread(&compressiontype, 1, sizeof(compressiontype), file); // load dummy compression value
+
+    // actually load the file
     initVars(file);
     initVram(file);
     initGlobals();
@@ -429,13 +466,13 @@ void transOverlay(u32 swapbuffer, bool pass2)
     GFX_TEX_FORMAT = 0;
 
     GFX_BEGIN = 1;
-    GFX_VERTEX16 = -32767 << 16 | -32767;
+    GFX_VERTEX16 = (u16)-32767 << 16 | (u16)-32767;
     GFX_VERTEX16 = 0; 
-    GFX_VERTEX16 = -32767 << 16 | 32767;
+    GFX_VERTEX16 = (u16)-32767 << 16 | 32767;
     GFX_VERTEX16 = 0; 
     GFX_VERTEX16 = 32767 << 16 | 32767;
     GFX_VERTEX16 = 0; 
-    GFX_VERTEX16 = 32767 << 16 | -32767;
+    GFX_VERTEX16 = 32767 << 16 | (u16)-32767;
     GFX_VERTEX16 = 0;
     GFX_FLUSH = swapbuffer;
 }
@@ -468,19 +505,26 @@ void initbuff(u8* ref, u8* buff)
 
 void doScreenshot(bool color18, bool bitmap)
 {
-    if (sscount > 999)
+    if (sscount > 999) // abort if too many screen shots
     {
+        waitForInput();
         return;
     }
-    REG_DISPCAPCNT |= DCAP_ENABLE;
 
     u16* bank;
     FILE* pic;
+    // find a free bank to use
     if (dispcapbank == 0) bank = VRAM_A;
     else if (dispcapbank == 1) bank = VRAM_B;
     else if (dispcapbank == 2) bank = VRAM_C;
     else if (dispcapbank == 3) bank = VRAM_D;
-    else return;
+    else // abort if no free bank is available
+    {
+        menuWriteSingle(str_err_nofreebank);
+        waitForInput();
+        return;
+    }
+    REG_DISPCAPCNT |= DCAP_ENABLE; // enable display capture
 
     u8 name[11];
     u8 ext[5];
@@ -489,6 +533,8 @@ void doScreenshot(bool color18, bool bitmap)
 
     chdir(fatGetDefaultCwd());
 
+    // find next unused screencap name
+    // todo: use the filename of the framedump as a base?
     snprintf(name, 11, "cap%i%s", sscount, ext);
     pic = fopen(name, "rb");
     sscount++;
@@ -499,25 +545,34 @@ void doScreenshot(bool color18, bool bitmap)
         pic = fopen(name, "rb");
         if (sscount > 999)
         {
+            menuWriteSingle(str_err_nofreebank);
+            waitForInput();
             return;
         }
     }
     pic = fopen(name, "wb");
 
+    // create the header for a bitmap
     if (bitmap)
     {
         if(!color18)
-        {
+        {   
+            //             BM            file size: 98370       00      00      image offset: 0x42
             u8 header[] = {0x42, 0x4D,   0x42, 0x80, 0x01, 0,   0, 0,   0, 0,   0x42, 0, 0, 0,
-            0x28, 0, 0, 0,   0x00, 0x01, 0, 0,   0xC0, 0, 0, 0,   1, 0,   0x10, 0,   3, 0, 0, 0,   0, 0xC0, 0, 0,   0, 1, 0, 0,   0, 1, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
+            // header size: 40 bytes (BITMAPINFOHEADER), x res: 256, y res: 192, color planes: 1, 16 bpp, BI_BITFIELDS, raw image size: 98304, printing stuff: 256 & 256, num colors: 0, important colors: 0
+            0x28, 0, 0, 0,   0x00, 0x01, 0, 0,   0xC0, 0, 0, 0,   1, 0,   0x10, 0,   3, 0, 0, 0,   0, 0x80, 0x01, 0,   0, 1, 0, 0,   0, 1, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
+            // 5r           5g                   5b
             0x1F, 0, 0, 0,   0xE0, 0x03, 0, 0,   0, 0x7C, 0, 0};
             fwrite(header, 1, sizeof(header), pic);
         }
         else
         {
+            //             BM            file size: 196674      00      00      image offset: 0x42
             u8 header[] = {0x42, 0x4D,   0x42, 0x00, 0x03, 0,   0, 0,   0, 0,   0x42, 0, 0, 0,
-            0x28, 0, 0, 0,   0x00, 0x01, 0, 0,   0xC0, 0, 0, 0,   1, 0,   0x20, 0,   3, 0, 0, 0,   0, 0xC0, 0, 0,   0, 1, 0, 0,   0, 1, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
-            0x3F, 0, 0, 0,   0xC0, 0x0F, 0, 0,   0, 0xF0, 0x03, 0}; // probably doesn't work?
+            // header size: 40 bytes (BITMAPINFOHEADER), x res: 256, y res: 192, color planes: 1, 32 bpp, BI_BITFIELDS, raw image size: 196608, printing stuff: 256 & 256, num colors: 0, important colors: 0
+            0x28, 0, 0, 0,   0x00, 0x01, 0, 0,   0xC0, 0, 0, 0,   1, 0,   0x20, 0,   3, 0, 0, 0,   0, 0x00, 0x03, 0,   0, 1, 0, 0,   0, 1, 0, 0,   0, 0, 0, 0,   0, 0, 0, 0,
+            // 6r            6g                  6b
+            0x3F, 0, 0, 0,   0xC0, 0x0F, 0, 0,   0, 0xF0, 0x03, 0};
             fwrite(header, 1, sizeof(header), pic);
         }
     }
@@ -556,10 +611,6 @@ void doScreenshot(bool color18, bool bitmap)
         bool b6r[192*256];
         bool b6g[192*256];
         bool b6b[192*256];
-
-        //initbuff(refr, b6r);
-        //initbuff(refg, b6g);
-        //initbuff(refb, b6b);
 
         for (int y = 0; y < 192; y++)
             for (int x = 0; x < 256; x++)
@@ -637,7 +688,8 @@ bool menuDirSelect()
     if ((nitrodir != NULL) && (fatdir != NULL) && (sddir != NULL))
     {
         menuWriteSingle(str_err_dir);
-        while(true) swiWaitForVBlank();
+        waitForInput();
+        exit(0);
     }
 
     u8* ptr_array[6] = {[0] = str_menu_seldir};
@@ -693,6 +745,7 @@ bool menuDirSelect()
         else // fat dir
         {
             closedir(nitrodir);
+            closedir(fatdir);
             closedir(sddir);
             chdir((usingfoldersd ? "sd:/framedumps" : "sd:/"));
             return true;
@@ -732,7 +785,7 @@ FILE* menuFileSelect()
     DIR* dir = opendir(".");
 
     u8 counter = 1;
-    for (int i = 0; counter < 23+1 && i < 256; i++)
+    for (int i = 0; counter <= 22+1 && i < 256; i++)
     {
         char png[] = ".png";
         char ndsfd[] = ".ndsfd";
@@ -748,7 +801,7 @@ FILE* menuFileSelect()
             filename_ptrs[counter-1] = malloc(255);
             strcpy(filename_ptrs[counter-1], dat->d_name);
             strncpy(ptr_array[counter], dat->d_name, 31);
-            strncat(ptr_array[counter++], "\n", 1);
+            strcat(ptr_array[counter++], "\n"); // also ensures the string ends with a null character
         }
     }
 
@@ -757,13 +810,7 @@ FILE* menuFileSelect()
     if (counter == 1)
     {
         menuWriteSingle(str_err_file);
-        u16 keys = 0;
-        while(keys & (KEY_A | KEY_B | KEY_START))
-        {
-            scanKeys();
-            keys = keysHeld();
-            swiWaitForVBlank();
-        }
+        waitForInput();
         return NULL;
     }
 
@@ -776,7 +823,8 @@ FILE* menuFileSelect()
     {
         for (int i = 0; i < counter - 3;)
         {
-            free(filename_ptrs[i++]);
+            free(filename_ptrs[i]);
+            i++;
             free(ptr_array[i]);
         }
         return NULL;
@@ -789,10 +837,12 @@ FILE* menuFileSelect()
         menuWriteSingle("OOPS\n");
         while (true) swiWaitForVBlank();
     }
-
+    
+    // this feels like such a janky way to do this but i think it checks out?
     for (int i = 0; i < counter - 3;)
     {
-        free(filename_ptrs[i++]);
+        free(filename_ptrs[i]);
+        i++;
         free(ptr_array[i]);
     }
 
@@ -806,13 +856,13 @@ void menuScreenshot()
     {
         str_menu_ss,
         str_opt_ss_norm_bmp,
-        str_opt_ss_norm_raw,
         str_opt_ss_full_bmp,
-        str_opt_ss_full_raw,
         str_hint_bback,
         str_hint_asel,
     };
+
     u8 selection = menuInputs(2, (struct InputIDs) {1,0,0}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
+
     switch(selection)
     {
         case 1:
@@ -823,15 +873,7 @@ void menuScreenshot()
             break;
 
         case 3:
-            doScreenshot(false, false);
-            break;
-
-        case 4:
             doScreenshot(true, true);
-            break;
-
-        case 5:
-            doScreenshot(true, false);
             break;
     }
 }
@@ -900,7 +942,7 @@ u8 menuMain(FILE** file)
 int main()
 {
     //consoleDebugInit(DebugDevice_NOCASH);
-    // init 2d engine to a custom menu implementation
+    // init secondary 2d engine to a custom menu implementation
     menuInit();
 
     // enable 3d gpu
@@ -924,6 +966,7 @@ int main()
         fclose(file);
     }
 
+    // initialize display capture
     if (dispcapbank != -127) initDispCap();
 
     menuMain(&file);
