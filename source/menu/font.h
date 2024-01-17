@@ -1,3 +1,4 @@
+#include <nds.h>
 
 
 
