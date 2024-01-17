@@ -790,7 +790,7 @@ FILE* menuFileSelect()
         
         if (strcmp(loc, png) == 0 || strcmp(loc, ndsfd) == 0)
         {
-            ptr_array[counter] = malloc(33);
+            ptr_array[counter] = calloc(33, sizeof(u8));
             filename_ptrs[counter-1] = malloc(255);
             memcpy(filename_ptrs[counter-1], dat->d_name, 255);
             memcpy(ptr_array[counter], dat->d_name, 31);

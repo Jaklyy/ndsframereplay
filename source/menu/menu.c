@@ -4,7 +4,7 @@
 
 
 
-s32 menucursor = 0;
+s16 menucursor = 0;
 
 void mapWrite(u8 tile, u8 palette)
 {
@@ -20,7 +20,7 @@ void menuWrite(u8* text)
         {
         case '\n':
             {
-            s32 temp = ((menucursor >> 5)) << 5; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
+            s16 temp = ((menucursor >> 5)) << 5; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
             if (temp != menucursor) menucursor = temp + 32;
             break;
             }
