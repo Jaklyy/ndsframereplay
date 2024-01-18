@@ -56,9 +56,6 @@ void menuWriteRev(u8* text)
     {
         switch (text[i])
         {
-        /*case '\n':
-            menucursor = ((menucursor >> 5) << 5) - 1; // a way to divide/multiply by 32 without actually dividing/multiplying by 32
-            break;*/
         case ((u8)'\xF0') ... ((u8)'\xFF'):
             palette = text[i];
             break;
@@ -98,7 +95,7 @@ void menuInit()
     BG_PALETTE_SUB[(PALETTE_SIZE*2)+1] = 0x3FF; // yellow
 }
 
-void menuRender(u8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
+void menuRender(s8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
 {
     menuClear();
     int j = 0;
@@ -125,6 +122,70 @@ void menuRender(u8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** stri
     {
         menucursor = MAP_AREA - (MAP_WIDTH * (footerR + i - 1));
         menuWriteRev(strings[j++]);
+    }
+}
+
+void menuEdit(void (*addr)(u32), u32* toedit, u8 numbits, u8 shift, u8 mode, u8 numstr, u8** strings, u8** values)
+{
+    // dumb way of doing this
+
+    // set up a bit mask
+    u32 mask = 0;
+    for (int i = 0; i < numbits; i++)
+    {
+        mask <<= 1;
+        mask |= 0x1;
+    }
+
+    u8* strend = strrchr(strings[1], ' ');
+    u32 variable = (*toedit >> shift) & mask;
+
+    fprintf(stderr, "%li|\n", variable);
+
+    bool menudirty = true;
+    scanKeys();
+    u16 prevkeys = keysHeld();
+    while (true)
+    {
+        swiWaitForVBlank();
+        if (menudirty)
+        {
+            menuRender(-1, 1, 1, 2, numstr, strings);
+            menudirty = false;
+        }
+
+        scanKeys();
+        u16 keys = keysHeld();
+        if (keys & KEY_UP && !(prevkeys & KEY_UP))
+        {
+            variable = (variable + 1) & mask;
+
+            if (values == NULL || values[variable] == NULL)
+                snprintf(strend, 5, " 0\x80%X", (u16)variable);
+            else strcpy(strend, values[variable]);
+
+            *toedit &= ~(mask << shift);
+            *toedit |= variable << shift;
+            if ((addr) != NULL) (*addr)(*toedit);
+            menudirty = true;
+        }
+        else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
+        {
+            variable = (variable - 1) & mask;
+
+            if (values == NULL || values[variable] == NULL)
+                snprintf(strend, 5, " 0\x80%X", (u16)variable);
+            else strcpy(strend, values[variable]);
+
+            *toedit &= ~(mask << shift);
+            *toedit |= variable << shift;
+            if ((addr) != NULL) (*addr)(*toedit);
+            menudirty = true;
+        }
+        else if (keys & KEY_B && !(prevkeys & KEY_B))
+            return;
+
+        prevkeys = keys;
     }
 }
 

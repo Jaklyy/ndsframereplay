@@ -464,14 +464,15 @@ bool loadFile(FILE* file)
     return true;
 }
 
-u8 menuMain(FILE** file)
+void menuMain(FILE** file)
 {
     u8* ptr_array[] =
     {
         str_menu_generic,
         str_opt_changefile,
         str_opt_rerender,
-        str_opt_gx,
+        str_opt_edit,
+        str_opt_quit,
         str_hint_rscreenshot,
         str_hint_asel,
     };
@@ -524,9 +525,12 @@ u8 menuMain(FILE** file)
                 runDump(true);
                 break;
 
-            case 4: // gx menu
-                //menuGX();
+            case 4: // edit menu
+                menuEditVars();
                 break;
+            
+            case 5: // quit
+                return;
         }
         abort:
     }
@@ -534,7 +538,8 @@ u8 menuMain(FILE** file)
 
 int main()
 {
-    //consoleDebugInit(DebugDevice_NOCASH);
+    consoleDebugInit(DebugDevice_NOCASH);
+
     // init secondary 2d engine to a custom menu implementation
     menuInit();
 

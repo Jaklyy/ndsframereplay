@@ -18,6 +18,8 @@ void initDispCap();
 bool menuDirSelect();
 FILE* menuFileSelect();
 
+void menuEditVars();
+
 extern u8 dispcapbank;
 
 #endif

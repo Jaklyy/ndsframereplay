@@ -9,26 +9,45 @@
 u8 str_menu_seldir[] =      "\xF2""SELECT DIRECTORY:\n";
 u8 str_menu_selfile[] =     "\xF2""SELECT FILE:\n";
 u8 str_menu_generic[] =     "\xF2""SELECT OPTION:\n";
-u8 str_menu_gx[] =          "\xF2""SELECT COMMAND:\n";
+u8 str_menu_globalvars[] =  "\xF2""-GLOBAL VARS-\n";
 u8 str_menu_ss[] =          "\xF2""SELECT SCREENSHOT MODE:\n";
+
+// edit menu sub sections
+u8 str_sub_3ddispcnt[] =    "\xF2""EDIT 3D DISPLAY CONTROL:\n";
+u8 str_sub_gx[] =           "\xF2""SELECT COMMAND:\n";
+u8 str_sub_editparam[] =    "\xF2""EDIT PARAMETER:\n";
 
 // menu options
 // directory menu
 u8 str_opt_sd[] =           "\xF0""SD\n";
 u8 str_opt_fc[] =           "\xF0""FLASHCARD\n";
 u8 str_opt_nitro[] =        "\xF0""ROMFS\n";
+
 // main menu
-u8 str_opt_gx[] =           "\xF0""VIEW GX\n";
+u8 str_opt_edit[] =         "\xF0""VIEW OR EDIT COMMANDS\n";
 u8 str_opt_rerender[] =     "\xF0""FORCE RERENDER\n";
 u8 str_opt_changefile[] =   "\xF0""CHANGE FILE\n";
-u8 str_opt_swapbuffer[] =   "\xF0""FORCE SWAP BUFFERS\n";
-// gx menu
+u8 str_opt_quit[] =         "\xF0""QUIT\n";
+
+// edit menu
+u8 str_opt_3ddispcnt[] =    "\xF0""3DDISPCNT\n";
+u8 str_opt_edgecolor[] =    "\xF0""EDGE COLOR\n";
+u8 str_opt_alphatest[] =    "\xF0""ALPHA TEST\n";
+u8 str_opt_clearcolor[] =   "\xF0""CLEAR COLOR\n";
+u8 str_opt_cleardepth[] =   "\xF0""CLEAR DEPTH\n";
+u8 str_opt_clearoffset[] =  "\xF0""CLEAR OFFSET\n";
+u8 str_opt_fogcolor[] =     "\xF0""FOG COLOR\n";
+u8 str_opt_fogtable[] =     "\xF0""FOG TABLE\n";
+u8 str_opt_toontable[] =    "\xF0""TOON TABLE\n";
+u8 str_opt_initstate[] =    "\xF0""INITAL STATE\n";
+u8 str_opt_cmdlist[] =      "\xF0""COMMAND LIST\n";
+u8 str_opt_reset[] =        "\xF0""RESET CHANGES\n";
 
 // screenshotmenu 
 u8 str_opt_ss_full_bmp[] =  "\xF0""666 18 BIT BMP (EXPERIMENTAL)\n";
-u8 str_opt_ss_full_raw[] =  "\xF0""666 18 BIT RAW (EXPERIMENTAL)\n";
+//u8 str_opt_ss_full_raw[] =  "\xF0""666 18 BIT RAW (EXPERIMENTAL)\n";
 u8 str_opt_ss_norm_bmp[] =  "\xF0""555 16 BIT BMP\n";
-u8 str_opt_ss_norm_raw[] =  "\xF0""555 16 BIT RAW\n";
+//u8 str_opt_ss_norm_raw[] =  "\xF0""555 16 BIT RAW\n";
 
 
 // menu footers
@@ -40,6 +59,7 @@ u8 str_hint_rightnext[] =   "\xF2""RIGHT: NEXT""\xF2";
 u8 str_hint_upadd[] =       "\xF2""UP: PLUS 1""\xF2";
 u8 str_hint_downsubt[] =    "\xF2""DOWN: MINUS 1""\xF2";
 u8 str_hint_rscreenshot[] = "\xF2""R: SCREENSHOT""\xF2";
+
 
 // menu errors
 u8 str_err_dir[] =          "\xF1""ERROR: UNABLE TO OPEN DIRECTORY\nPLEASE TURN OFF THE SYSTEM\n";
@@ -106,33 +126,40 @@ u8 str_matrix[][8] =
     "TEX MTX",
 };
 
-u8 str_dispcnt[][12] =
+u8 str_state[][6] = 
 {
-    " TEXTURES: ",
-    "  SHADING: ",
-    "ALPHATEST: ",
-    "ANTIALIAS: ",
-    " EDGEMARK: ",
-    " FOG MODE: ",
-    "      FOG: ",
-    " FOGSHIFT: ",
-    "REARPLANE: ",
+    " OFF\n",
+    " ON\n",
 };
 
-u8 str_shading[][11] =
+u8 str_3ddispcnt[][11] =
 {
-    "TOON\n",
-    "HIGHLIGHT\n",
+    " TEXTURES:",
+    "  SHADING:",
+    "ALPHATEST:",
+    "    BLEND:",
+    "ANTIALIAS:",
+    " EDGEMARK:",
+    " FOG MODE:",
+    "      FOG:",
+    " FOGSHIFT:",
+    "REARPLANE:",
+};
+
+u8 str_shading[][12] =
+{
+    " TOON\n",
+    " HIGHLIGHT\n",
 };
 
 u8 str_fogmode[][13] =
 {
-    "ALPHA+COLOR\n",
-    "ALPHA\n",
+    " ALPHACOLOR\n",
+    " ALPHA ONLY\n",
 };
 
-u8 str_rearplane[][8] =
+u8 str_rearplane[][9] =
 {
-    "BLANK\n",
-    "BITMAP\n",
+    " BLANK\n",
+    " BITMAP\n",
 };
