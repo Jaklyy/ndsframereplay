@@ -125,7 +125,7 @@ void menuRender(s8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** stri
     }
 }
 
-void menuEdit(void (*addr)(u32), u32* toedit, u8 numbits, u8 shift, u8 mode, u8 numstr, u8** strings, u8** values)
+void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 shift, u8 mode, u8 numstr, u8** strings, u8** values)
 {
     // dumb way of doing this
 
@@ -161,12 +161,12 @@ void menuEdit(void (*addr)(u32), u32* toedit, u8 numbits, u8 shift, u8 mode, u8 
             variable = (variable + 1) & mask;
 
             if (values == NULL || values[variable] == NULL)
-                snprintf(strend, 5, " 0\x80%X", (u16)variable);
+                snprintf(strend, 6, " 0\x80%X\n", (u16)variable);
             else strcpy(strend, values[variable]);
 
             *toedit &= ~(mask << shift);
-            *toedit |= variable << shift;
-            if ((addr) != NULL) (*addr)(*toedit);
+            *toedit |= (variable << shift);
+            if ((addr) != NULL) (*addr)(*toedit, addroffs);
             menudirty = true;
         }
         else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
@@ -174,12 +174,12 @@ void menuEdit(void (*addr)(u32), u32* toedit, u8 numbits, u8 shift, u8 mode, u8 
             variable = (variable - 1) & mask;
 
             if (values == NULL || values[variable] == NULL)
-                snprintf(strend, 5, " 0\x80%X", (u16)variable);
+                snprintf(strend, 6, " 0\x80%X\n", (u16)variable);
             else strcpy(strend, values[variable]);
 
             *toedit &= ~(mask << shift);
             *toedit |= variable << shift;
-            if ((addr) != NULL) (*addr)(*toedit);
+            if ((addr) != NULL) (*addr)(*toedit, addroffs);
             menudirty = true;
         }
         else if (keys & KEY_B && !(prevkeys & KEY_B))
@@ -189,10 +189,9 @@ void menuEdit(void (*addr)(u32), u32* toedit, u8 numbits, u8 shift, u8 mode, u8 
     }
 }
 
-u16 menuInputs(u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
+u16 menuInputs(s8* cursor, u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
 {
     u16 numentries = numstr - header - footerL - footerR;
-    s8 cursor = 0;
     bool menudirty = true;
     scanKeys();
     u16 prevkeys = keysHeld();
@@ -201,7 +200,7 @@ u16 menuInputs(u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 
         swiWaitForVBlank();
         if (menudirty)
         {
-            menuRender(cursor, header, footerL, footerR, numstr, strings);
+            menuRender(*cursor, header, footerL, footerR, numstr, strings);
             menudirty = false;
         }
 
@@ -209,7 +208,7 @@ u16 menuInputs(u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 
         u16 keys = keysHeld();
         if (keys & KEY_A && !(prevkeys & KEY_A))
         {
-            return cursor + startID;
+            return *cursor + startID;
         }
         else if (inputids.B != 0 && keys & KEY_B && !(prevkeys & KEY_B))
         {
@@ -225,14 +224,14 @@ u16 menuInputs(u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 
         }
         else if (keys & KEY_UP && !(prevkeys & KEY_UP))
         {
-            cursor--;
-            if (cursor < 0) cursor = numentries-1;
+            *cursor -= 1;
+            if (*cursor < 0) *cursor = numentries-1;
             menudirty = true;
         }
         else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
         {
-            cursor++;
-            if (cursor > numentries-1) cursor = 0;
+            *cursor += 1;
+            if (*cursor > numentries-1) *cursor = 0;
             menudirty = true;
         }
         prevkeys = keys;

@@ -3,7 +3,55 @@
 
 
 
-void input3DDispCnt(u32 var)
+void inputEdgeColor(u32 var, u8 offset)
+{
+
+}
+
+/*void menuEdgeColor()
+{
+    u8* ptr_array[] =
+    {
+    [0] = str_sub_edgecolor,
+    [9] = str_hint_bback,
+    [10] = str_hint_aedit,
+    };
+    for (int i = 0; i < 8; i++)
+    {
+        u8 color = 0xC0 | i;
+        ptr_array[i+1] = malloc(17);
+        sprintf(ptr_array[i+1], "EDGE COLOR %i:%c\xFF", i, color);
+    }
+
+    ptr_array2* [] =
+    {
+        str_sub_edgecolor,
+        str_null,
+        str_hint_bback,
+        str_hint_upadd,
+        str_hint_downsubt
+    };
+
+    s8* cursor = 0;
+    while (true)
+    {
+        u8 sel = menuInputs(&cursor, 2, (struct InputIDs) {1, 0, 0}, 1, 1, 1, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array);
+
+        if (sel == 1) goto exit;
+        else
+        {
+            sel -= 2;
+            ptr_array2[1] = ptr_array[sel+1];
+            menuEdit(&inputEdgeColor, sel, &edgecolor[8], 15, 0, 1, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, NULL);
+        }
+    }
+
+    exit:
+    for (int i = 0+1; i < 8+1; i++)
+        free(ptr_array[i]);
+}*/
+
+void input3DDispCnt(u32 var, __attribute__((unused)) u8 offset)
 {
     GFX_CONTROL = var;
 }
@@ -67,9 +115,10 @@ void menu3DDispCnt()
         str_hint_aedit
     };
 
+    s8 cursor = 0;
     while (true)
     {
-        u8 selection = menuInputs(2, (struct InputIDs) {1, 0, 0}, 1, 1, 1, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array);
+        u8 sel = menuInputs(&cursor, 2, (struct InputIDs) {1, 0, 0}, 1, 1, 1, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array);
 
         u8* ptr_array2[] = 
         {
@@ -81,7 +130,7 @@ void menu3DDispCnt()
         };
 
 
-        switch(selection)
+        switch(sel)
         {
             case 1: // back
                 return;
@@ -93,7 +142,7 @@ void menu3DDispCnt()
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, &disp3dcnt, 1, 0, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 1, 0, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
                 break;
             }
             case 3: // shading mode
@@ -104,7 +153,7 @@ void menu3DDispCnt()
                     str_shading[0],
                     str_shading[1],
                 };
-                menuEdit(&input3DDispCnt, &disp3dcnt, 1, 1, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 1, 1, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
                 break;
             }
             case 4: // alpha test toggle
@@ -115,7 +164,7 @@ void menu3DDispCnt()
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, &disp3dcnt, 1, 2, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 1, 2, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
                 break;
             }
             case 5: // translucency blend toggle
@@ -126,7 +175,7 @@ void menu3DDispCnt()
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, &disp3dcnt, 1, 3, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 1, 3, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
                 break;
             }
             case 6: // aa toggle
@@ -137,7 +186,7 @@ void menu3DDispCnt()
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, &disp3dcnt, 1, 4, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 1, 4, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
                 break;
             }
             case 7: // edge marking toggle
@@ -148,7 +197,7 @@ void menu3DDispCnt()
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, &disp3dcnt, 1, 5, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 1, 5, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
                 break;
             }
             case 8: // fog mode toggle
@@ -159,7 +208,7 @@ void menu3DDispCnt()
                     str_fogmode[0],
                     str_fogmode[1],
                 };
-                menuEdit(&input3DDispCnt, &disp3dcnt, 1, 6, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 1, 6, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
                 break;
             }
             case 9: // fog toggle
@@ -170,14 +219,13 @@ void menu3DDispCnt()
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, &disp3dcnt, 1, 7, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 1, 7, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
                 break;
             }
             case 10: // fog shift variable
             {
                 ptr_array2[1] = stfogshift;
-                u8* vals[] = {NULL};
-                menuEdit(&input3DDispCnt, &disp3dcnt, 4, 8, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 4, 8, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, NULL);
                 break;
             }
             case 11: // rear plane mode toggle
@@ -188,7 +236,7 @@ void menu3DDispCnt()
                     str_rearplane[0],
                     str_rearplane[1],
                 };
-                menuEdit(&input3DDispCnt, &disp3dcnt, 1, 14, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
+                menuEdit(&input3DDispCnt, 0, &disp3dcnt, 1, 14, 0, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2, vals);
                 break;
             }
         }
@@ -218,16 +266,18 @@ void menuEditVars()
         str_hint_asel,
     };
     
+    s8 cursor = 0;
     while (true)
     {
-        u8 selection = menuInputs(0, (struct InputIDs) {12, 0, 13}, 2, 2, 1, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array);
+        u8 sel = menuInputs(&cursor, 0, (struct InputIDs) {12, 0, 13}, 2, 2, 1, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array);
 
-        switch (selection)
+        switch (sel)
         {
             case 0: // 3d display control
                 menu3DDispCnt();
                 break;
             case 1: // edge colors
+                //menuEdgeColor();
                 break;
             case 2: // alpha test ref
                 break;

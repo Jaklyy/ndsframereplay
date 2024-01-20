@@ -14,6 +14,7 @@ u8 str_menu_ss[] =          "\xF2""SELECT SCREENSHOT MODE:\n";
 
 // edit menu sub sections
 u8 str_sub_3ddispcnt[] =    "\xF2""EDIT 3D DISPLAY CONTROL:\n";
+u8 str_sub_edgecolor[] =    "\xF2""EDIT EDGE COLORS:\n";
 u8 str_sub_gx[] =           "\xF2""SELECT COMMAND:\n";
 u8 str_sub_editparam[] =    "\xF2""EDIT PARAMETER:\n";
 
@@ -27,7 +28,7 @@ u8 str_opt_nitro[] =        "\xF0""ROMFS\n";
 u8 str_opt_edit[] =         "\xF0""VIEW OR EDIT COMMANDS\n";
 u8 str_opt_rerender[] =     "\xF0""FORCE RERENDER\n";
 u8 str_opt_changefile[] =   "\xF0""CHANGE FILE\n";
-u8 str_opt_quit[] =         "\xF0""QUIT\n";
+u8 str_opt_quit[] =         "\xF0""VIBE CHECK\n";
 
 // edit menu
 u8 str_opt_3ddispcnt[] =    "\xF0""3DDISPCNT\n";
@@ -46,8 +47,8 @@ u8 str_opt_reset[] =        "\xF0""RESET CHANGES\n";
 // screenshotmenu 
 u8 str_opt_ss_full_bmp[] =  "\xF0""666 18 BIT BMP (EXPERIMENTAL)\n";
 //u8 str_opt_ss_full_raw[] =  "\xF0""666 18 BIT RAW (EXPERIMENTAL)\n";
-u8 str_opt_ss_norm_bmp[] =  "\xF0""555 16 BIT BMP\n";
-//u8 str_opt_ss_norm_raw[] =  "\xF0""555 16 BIT RAW\n";
+u8 str_opt_ss_norm_bmp[] =  "\xF0""555 15 BIT BMP\n";
+//u8 str_opt_ss_norm_raw[] =  "\xF0""555 15 BIT RAW\n";
 
 
 // menu footers
@@ -70,6 +71,9 @@ u8 str_err_invalidfile[] =  "\xF1""ERROR: INVALID FILE\n";
 u8 str_err_headerfail[] =   "\xF1""ERROR: FILE HEADER INVALID\n";
 u8 str_err_oldver[] =       "\xF1""ERROR: FILE TOO OLD TO LOAD\n";
 u8 str_err_timetravel[] =   "\xF1""ERROR: FILE FROM FUTURE\nCHECK FOR A NEW VERSION\n";
+
+// misc
+u8 str_edgecolor[] =        "\xF1""EDGE COLOR ";
 
 // stuff i haven't put anywhere yet-
 u8 str_gx[] =               "\xF0""GX: 0x";

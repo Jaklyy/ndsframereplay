@@ -27,6 +27,6 @@ void menuWriteRev(u8* text);
 void menuClear();
 void menuInit();
 void menuRender(s8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings);
-void menuEdit(void (*addr)(u32), u32* toedit, u8 numbits, u8 shift, u8 mode, u8 numstr, u8** strings, u8** values);
-u16 menuInputs(u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings);
+void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 shift, u8 mode, u8 numstr, u8** strings, u8** values);
+u16 menuInputs(s8* cursor, u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings);
 #endif

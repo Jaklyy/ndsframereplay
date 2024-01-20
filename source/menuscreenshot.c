@@ -3,6 +3,7 @@
 
 
 
+u64 transidmask;
 u8 dispcapbank = 0xFF;
 u16 sscount = 0;
 
@@ -11,22 +12,23 @@ void initDispCap()
     REG_DISPCAPCNT = DCAP_BANK(dispcapbank) | DCAP_SIZE(DCAP_SIZE_256x192) | DCAP_SRC_A(DCAP_SRC_A_3DONLY);
 }
 
-void checkDiff(bool* fin, u8 ref, u8 comp, bool pass)
+bool checkDiff(bool fin, u8 ref, u8 comp, bool pass)
 {
     if (!pass)
     {
         if (ref <= (15 >> 1))
-            *fin = (ref != comp);
+            return (ref != comp);
         else if ((ref >= (32 >> 1)) && (ref <= (47 >> 1)))
-            *fin = (ref == comp);
+            return (ref == comp);
     }
     else
     {
         if ((ref >= (16 >> 1)) && (ref <= (31 >> 1)))
-            *fin = (ref != comp);
+            return (ref != comp);
         else if (ref >= (48 >> 1))
-            *fin = (ref == comp);
+            return (ref == comp);
     }
+    return fin;
 }
 
 void transOverlay(u32 swapbuffer, bool pass2)
@@ -40,7 +42,18 @@ void transOverlay(u32 swapbuffer, bool pass2)
         MATRIX_IDENTITY = 0;
     }
 
-    GFX_POLY_FORMAT = 3 << 6 | 1 << 16;
+    u8 polyid = 0;
+    while ((transidmask & ((u64)0x1 << polyid)))
+    {
+        polyid++;
+        if (polyid > 63)
+        {
+            polyid = 0;
+            break;
+        }
+    }
+
+    GFX_POLY_FORMAT = 3 << 6 | 1 << 16 | polyid << 24;
     GFX_COLOR = col << 10 | col << 5 | col;
     GFX_TEX_FORMAT = 0;
 
@@ -54,6 +67,7 @@ void transOverlay(u32 swapbuffer, bool pass2)
     GFX_VERTEX16 = 32767 << 16 | (u16)-32767;
     GFX_VERTEX16 = 0;
     GFX_FLUSH = swapbuffer;
+    swiWaitForVBlank();
 }
 
 void doScreenshot(bool color18, bool bitmap)
@@ -174,9 +188,9 @@ void doScreenshot(bool color18, bool bitmap)
                     u8 g = (c >> 5) & 0x1F;
                     u8 b = c & 0x1F;
 
-                    checkDiff(&b6r[offset], refr[offset], r, false);
-                    checkDiff(&b6g[offset], refg[offset], g, false);
-                    checkDiff(&b6b[offset], refb[offset], b, false);
+                    b6r[offset] = checkDiff(b6r[offset], refr[offset], r, false);
+                    b6g[offset] = checkDiff(b6g[offset], refg[offset], g, false);
+                    b6b[offset] = checkDiff(b6b[offset], refb[offset], b, false);
                 }
 
         swapbuffer = runDump(false);
@@ -195,9 +209,9 @@ void doScreenshot(bool color18, bool bitmap)
                     u8 g = (c >> 5) & 0x1F;
                     u8 b = c & 0x1F;
 
-                    checkDiff(&b6r[offset], refr[offset], r, true);
-                    checkDiff(&b6g[offset], refg[offset], g, true);
-                    checkDiff(&b6b[offset], refb[offset], b, true);
+                    b6r[offset] = checkDiff(b6r[offset], refr[offset], r, true);
+                    b6g[offset] = checkDiff(b6g[offset], refg[offset], g, true);
+                    b6b[offset] = checkDiff(b6b[offset], refb[offset], b, true);
                 }
 
         if (bitmap)
@@ -228,7 +242,8 @@ void menuScreenshot()
         str_hint_asel,
     };
 
-    u8 selection = menuInputs(2, (struct InputIDs) {1,0,0}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
+    s8 cursor = 0;
+    u8 selection = menuInputs(&cursor, 2, (struct InputIDs) {1,0,0}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
 
     switch(selection)
     {

@@ -21,5 +21,6 @@ FILE* menuFileSelect();
 void menuEditVars();
 
 extern u8 dispcapbank;
+extern u64 transidmask;
 
 #endif

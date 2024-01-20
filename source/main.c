@@ -77,7 +77,8 @@ u32 numparams;
 
 // only store a maximum of 500KB
 // cmds should be stored in one consecutive block before all params are stored.
-// nops and vec/box tests should not be added to any of these trackers (file a bug report if this should be changed)
+// nops and vec/box tests should not be added to any of these trackers
+// id 255 is used to store zero dot disp reg writes
 u8* cmd = NULL;
 u32* param = NULL;
 
@@ -401,6 +402,10 @@ void initFrameState()
 
 u32 runGX(bool finish)
 {
+    transidmask = 0;
+    u32 currtexparam = texparams;
+    u32 currpolyattrunset = polyattrunset;
+    u32 currpolyattr = polyattr;
     for (u32 i = 0, j = 0; i < numcmds; i++)
     {   
         // handle zerodotdisp reg writes
@@ -416,6 +421,24 @@ u32 runGX(bool finish)
                 *finaladdr = 0;
         }
         else return param[j];
+
+        if (!finish)
+        {
+            if (cmd[i] == 0x29) currpolyattrunset = param[j-1]; // polyattr
+            else if (cmd[i] == 0x40) currpolyattr = currpolyattrunset; // begin poly
+            else if (cmd[i] == 0x2A) currtexparam = param[j-1]; // texparam
+            else if (cmd[i] >= 0x23 && cmd[i] <= 0x28) // vtx cmds
+            {
+                // create a mask of translucent polygon ids
+                u8 texmode = ((currtexparam >> 26) & 0x7); 
+                u8 alpha = ((currpolyattr >> 16) && 0x1F); 
+                if (texmode == 6 || texmode == 1 || (alpha != 31 && alpha != 0))
+                {
+                    u8 polyid = (currpolyattr >> 24) & 0x3F;
+                    transidmask |= (u64)1 << polyid;
+                }
+            }
+        }
     }
     return 0;
 }
@@ -477,9 +500,10 @@ void menuMain(FILE** file)
         str_hint_asel,
     };
 
+    s8 cursor = 0;
     while (true)
     {
-        u8 selection = menuInputs(2, (struct InputIDs) {0,0,1}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
+        u8 selection = menuInputs(&cursor, 2, (struct InputIDs) {0,0,1}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
         switch(selection)
         {
             case 1: // R button - screenshot
@@ -571,4 +595,5 @@ int main()
     if (dispcapbank != 0xFF) initDispCap();
 
     menuMain(&file);
+    exit(0);
 }

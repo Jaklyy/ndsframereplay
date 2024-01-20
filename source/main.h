@@ -122,7 +122,8 @@ extern u32 numparams;
 
 // only store a maximum of 500KB
 // cmds should be stored in one consecutive block before all params are stored.
-// nops and vec/box tests should not be added to any of these trackers (file a bug report if this should be changed)
+// nops and vec/box tests should not be added to any of these trackers
+// id 255 is used to store zero dot disp reg writes
 extern u8* cmd;
 extern u32* param;
 

@@ -15,6 +15,7 @@ extern u8 str_menu_ss[];
 
 // edit menu sub sections
 extern u8 str_sub_3ddispcnt[];
+extern u8 str_sub_edgecolor[];
 extern u8 str_sub_gx[];
 extern u8 str_sub_editparam[];
 
@@ -72,6 +73,9 @@ extern u8 str_err_invalidfile[];
 extern u8 str_err_headerfail[];
 extern u8 str_err_oldver[];
 extern u8 str_err_timetravel[];
+
+// misc
+extern u8 str_edgecolor[];
 
 // stuff i haven't put anywhere yet-
 extern u8 str_gx[];
