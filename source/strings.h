@@ -18,6 +18,7 @@ extern u8 str_sub_3ddispcnt[];
 extern u8 str_sub_edgecolor[];
 extern u8 str_sub_gx[];
 extern u8 str_sub_editparam[];
+extern u8 str_sub_color[];
 
 // menu options
 // directory menu
@@ -46,6 +47,10 @@ extern u8 str_opt_initstate[];
 extern u8 str_opt_cmdlist[];
 extern u8 str_opt_reset[];
 
+extern u8 str_opt_r[];
+extern u8 str_opt_g[];
+extern u8 str_opt_b[];
+
 // screenshotmenu 
 extern u8 str_opt_ss_full_bmp[];
 //extern u8 str_opt_ss_full_raw[];
@@ -59,8 +64,10 @@ extern u8 str_hint_aedit[];
 extern u8 str_hint_bback[];
 extern u8 str_hint_leftprev[];
 extern u8 str_hint_rightnext[];
-extern u8 str_hint_upadd[];
-extern u8 str_hint_downsubt[];
+extern u8 str_hint_leftsubt[];
+extern u8 str_hint_rightadd[];
+extern u8 str_hint_radd10[];
+extern u8 str_hint_lsubt10[];
 extern u8 str_hint_rscreenshot[];
 
 

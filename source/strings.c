@@ -17,6 +17,7 @@ u8 str_sub_3ddispcnt[] =    "\xF2""EDIT 3D DISPLAY CONTROL:\n";
 u8 str_sub_edgecolor[] =    "\xF2""EDIT EDGE COLORS:\n";
 u8 str_sub_gx[] =           "\xF2""SELECT COMMAND:\n";
 u8 str_sub_editparam[] =    "\xF2""EDIT PARAMETER:\n";
+u8 str_sub_color[] =        "\xF2""EDIT COLOR: \xFF\xC1\n";
 
 // menu options
 // directory menu
@@ -44,6 +45,10 @@ u8 str_opt_initstate[] =    "\xF0""INITAL STATE\n";
 u8 str_opt_cmdlist[] =      "\xF0""COMMAND LIST\n";
 u8 str_opt_reset[] =        "\xF0""RESET CHANGES\n";
 
+u8 str_opt_r[] =            "\xF0""R: \xFF\xC2\xF0"" 0\x80";
+u8 str_opt_g[] =            "\xF0""G: \xFF\xC3\xF0"" 0\x80";
+u8 str_opt_b[] =            "\xF0""B: \xFF\xC4\xF0"" 0\x80";
+
 // screenshotmenu 
 u8 str_opt_ss_full_bmp[] =  "\xF0""666 18 BIT BMP (EXPERIMENTAL)\n";
 //u8 str_opt_ss_full_raw[] =  "\xF0""666 18 BIT RAW (EXPERIMENTAL)\n";
@@ -57,8 +62,10 @@ u8 str_hint_aedit[] =       "\xF2""A: EDIT""\xF2";
 u8 str_hint_bback[] =       "\xF2""B: BACK""\xF2";
 u8 str_hint_leftprev[] =    "\xF2""LEFT: PREV""\xF2";
 u8 str_hint_rightnext[] =   "\xF2""RIGHT: NEXT""\xF2";
-u8 str_hint_upadd[] =       "\xF2""UP: PLUS 1""\xF2";
-u8 str_hint_downsubt[] =    "\xF2""DOWN: MINUS 1""\xF2";
+u8 str_hint_leftsubt[] =    "\xF2""LEFT: MINUS 1""\xF2";
+u8 str_hint_rightadd[] =    "\xF2""RIGHT: PLUS 1""\xF2";
+u8 str_hint_radd10[] =      "\xF2""R: PLUS 10""\xF2";
+u8 str_hint_lsubt10[] =     "\xF2""L: MINUS 10""\xF2";
 u8 str_hint_rscreenshot[] = "\xF2""R: SCREENSHOT""\xF2";
 
 
@@ -71,9 +78,6 @@ u8 str_err_invalidfile[] =  "\xF1""ERROR: INVALID FILE\n";
 u8 str_err_headerfail[] =   "\xF1""ERROR: FILE HEADER INVALID\n";
 u8 str_err_oldver[] =       "\xF1""ERROR: FILE TOO OLD TO LOAD\n";
 u8 str_err_timetravel[] =   "\xF1""ERROR: FILE FROM FUTURE\nCHECK FOR A NEW VERSION\n";
-
-// misc
-u8 str_edgecolor[] =        "\xF1""EDGE COLOR ";
 
 // stuff i haven't put anywhere yet-
 u8 str_gx[] =               "\xF0""GX: 0x";

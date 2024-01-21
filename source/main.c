@@ -500,10 +500,10 @@ void menuMain(FILE** file)
         str_hint_asel,
     };
 
-    s8 cursor = 0;
+    s32 cursor = 0;
     while (true)
     {
-        u8 selection = menuInputs(&cursor, 2, (struct InputIDs) {0,0,1}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
+        u32 selection = menuInputs(&cursor, 2, (struct InputIDs) {0,0,1}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
         switch(selection)
         {
             case 1: // R button - screenshot
@@ -562,7 +562,7 @@ void menuMain(FILE** file)
 
 int main()
 {
-    consoleDebugInit(DebugDevice_NOCASH);
+    //consoleDebugInit(DebugDevice_NOCASH);
 
     // init secondary 2d engine to a custom menu implementation
     menuInit();

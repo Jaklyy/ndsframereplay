@@ -54,8 +54,8 @@ bool menuDirSelect()
     ptr_array[i] = str_hint_asel;
     i++;
 
-    s8 cursor = 0;
-    u16 selection = menuInputs(&cursor, 0, (struct InputIDs) {3,0,0}, 1, 1, 1, i, ptr_array);
+    s32 cursor = 0;
+    u32 selection = menuInputs(&cursor, 0, (struct InputIDs) {3,0,0}, 1, 1, 1, i, ptr_array);
     if (selection == 3)
     {
         closedir(nitrodir);
@@ -157,8 +157,8 @@ FILE* menuFileSelect()
     ptr_array[counter++] = str_hint_bback;
     ptr_array[counter++] = str_hint_asel;
     
-    s8 cursor = 0;
-    s16 selection = menuInputs(&cursor, 2, (struct InputIDs) {1,0,0}, 1, 1, 1, counter, ptr_array) - 2;
+    s32 cursor = 0;
+    s32 selection = menuInputs(&cursor, 2, (struct InputIDs) {1,0,0}, 1, 1, 1, counter, ptr_array) - 2;
 
     if (selection == -1)
     {

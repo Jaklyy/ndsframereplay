@@ -95,7 +95,7 @@ void menuInit()
     BG_PALETTE_SUB[(PALETTE_SIZE*2)+1] = 0x3FF; // yellow
 }
 
-void menuRender(s8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
+void menuRender(s32 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
 {
     menuClear();
     int j = 0;
@@ -125,9 +125,9 @@ void menuRender(s8 sel, u8 header, u8 footerL, u8 footerR, int numstr, u8** stri
     }
 }
 
-void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 shift, u8 mode, u8 numstr, u8** strings, u8** values)
+void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 shift, u8 mode, u8 header, u8 footerL, u8 footerR, u8 numstr, u8** strings, u8** values)
 {
-    // dumb way of doing this
+    u16 numentries = numstr - header - footerL - footerR;
 
     // set up a bit mask
     u32 mask = 0;
@@ -137,59 +137,181 @@ void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 sh
         mask |= 0x1;
     }
 
-    u8* strend = strrchr(strings[1], ' ');
-    u32 variable = (*toedit >> shift) & mask;
-
-    fprintf(stderr, "%li|\n", variable);
+    u8* strend[16];
+    u32 variable[16];
+    
+    for (int i = 0; i < numentries; i++)
+    {
+        strend[i] = strrchr(strings[i+1], ' ');
+        variable[i] = ((*toedit >> shift) >> (numbits * i)) & mask;
+    }
+    
+    if (mode == 1)
+    {
+        BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
+        BG_PALETTE_SUB[(PALETTE_SIZE*15)+2] = variable[0] & mask;
+        BG_PALETTE_SUB[(PALETTE_SIZE*15)+3] = (variable[1] & mask) << 5;
+        BG_PALETTE_SUB[(PALETTE_SIZE*15)+4] = (variable[2] & mask) << 10;
+    }
 
     bool menudirty = true;
     scanKeys();
     u16 prevkeys = keysHeld();
+    s32 cursor = 0;
     while (true)
     {
         swiWaitForVBlank();
         if (menudirty)
         {
-            menuRender(-1, 1, 1, 2, numstr, strings);
+            menuRender((numentries <= 1 ? -1 : cursor), header, footerL, footerR, numstr, strings);
             menudirty = false;
         }
 
         scanKeys();
         u16 keys = keysHeld();
-        if (keys & KEY_UP && !(prevkeys & KEY_UP))
+
+        if (keys & KEY_RIGHT && !(prevkeys & KEY_RIGHT))
         {
-            variable = (variable + 1) & mask;
+            variable[cursor] = (variable[cursor] + 1) & mask;
 
-            if (values == NULL || values[variable] == NULL)
-                snprintf(strend, 6, " 0\x80%X\n", (u16)variable);
-            else strcpy(strend, values[variable]);
+            if (mode == 1)
+            {
+                BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
+                BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
+            }
 
-            *toedit &= ~(mask << shift);
-            *toedit |= (variable << shift);
+            if (values == NULL || values[variable[cursor+1]] == NULL)
+                sprintf(strend[cursor], " 0\x80%X\n", variable[cursor]);
+            else strcpy(strend[cursor], values[variable[cursor+1]]);
+
+            if (mode == 1)
+            {
+                *toedit = variable[0] | variable[1] << 5 | variable[2] << 10;
+            }
+            else
+            {
+                *toedit &= ~(mask << shift);
+                *toedit |= (variable[cursor] << shift);
+            }
             if ((addr) != NULL) (*addr)(*toedit, addroffs);
             menudirty = true;
         }
-        else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
+        else if (keys & KEY_LEFT && !(prevkeys & KEY_LEFT))
         {
-            variable = (variable - 1) & mask;
+            variable[cursor] = (variable[cursor] - 1) & mask;
 
-            if (values == NULL || values[variable] == NULL)
-                snprintf(strend, 6, " 0\x80%X\n", (u16)variable);
-            else strcpy(strend, values[variable]);
+            if (mode == 1)
+            {
+                BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
+                BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
+            }
 
-            *toedit &= ~(mask << shift);
-            *toedit |= variable << shift;
+            if (values == NULL || values[variable[cursor+1]] == NULL)
+                sprintf(strend[cursor], " 0\x80%X\n", variable[cursor]);
+            else strcpy(strend[cursor], values[variable[cursor+1]]);
+
+            if (mode == 1)
+            {
+                *toedit = variable[0] | variable[1] << 5 | variable[2] << 10;
+            }
+            else
+            {
+                *toedit &= ~(mask << shift);
+                *toedit |= (variable[cursor] << shift);
+            }
             if ((addr) != NULL) (*addr)(*toedit, addroffs);
             menudirty = true;
         }
         else if (keys & KEY_B && !(prevkeys & KEY_B))
+        {
             return;
+        }
+        if (numbits > 1)
+        {
+            if (keys & KEY_R && !(prevkeys & KEY_R))
+            {
+                if (variable[cursor] != mask)
+                {
+                    variable[cursor] += 10;
+                    if (variable > mask) variable[cursor] = mask;
+                }
+                else variable[cursor] = 0;
+
+                if (values == NULL || values[variable[cursor+1]] == NULL)
+                    sprintf(strend[cursor], " 0\x80%X\n", variable[cursor]);
+                else strcpy(strend[cursor], values[variable[cursor+1]]);
+
+                if (mode == 1)
+                {
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
+                }
+
+                if (mode == 1)
+                {
+                    *toedit = variable[0] | variable[1] << 5 | variable[2] << 10;
+                }
+                else
+                {
+                    *toedit &= ~(mask << shift);
+                    *toedit |= (variable[cursor] << shift);
+                }
+                if ((addr) != NULL) (*addr)(*toedit, addroffs);
+                menudirty = true;
+            }
+            else if (keys & KEY_L && !(prevkeys & KEY_L))
+            {
+                if (variable[cursor] != 0)
+                {
+                    variable[cursor] -= 10;
+                    if (variable[cursor] > mask) variable[cursor] = 0;
+                }
+                else variable[cursor] = mask;
+
+                if (mode == 1)
+                {
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
+                }
+
+                if (values == NULL || values[variable[cursor+1]] == NULL)
+                    sprintf(strend[cursor], " 0\x80%X\n", variable[cursor]);
+                else strcpy(strend[cursor], values[variable[cursor+1]]);
+
+                if (mode == 1)
+                {
+                    *toedit = variable[0] | variable[1] << 5 | variable[2] << 10;
+                }
+                else
+                {
+                    *toedit &= ~(mask << shift);
+                    *toedit |= (variable[cursor] << shift);
+                }
+                if ((addr) != NULL) (*addr)(*toedit, addroffs);
+                menudirty = true;
+            }
+        }
+        if (numentries > 1)
+        {
+            if (keys & KEY_UP && !(prevkeys & KEY_UP))
+            {
+                cursor -= 1;
+                if (cursor < 0) cursor = numentries-1;
+                menudirty = true;
+            }
+            else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
+            {
+                cursor += 1;
+                if (cursor > numentries-1) cursor = 0;
+                menudirty = true;
+            }
+        }
 
         prevkeys = keys;
     }
 }
 
-u16 menuInputs(s8* cursor, u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
+u32 menuInputs(s32* cursor, u16 startID, struct InputIDs inputids, u8 header, u8 footerL, u8 footerR, int numstr, u8** strings)
 {
     u16 numentries = numstr - header - footerL - footerR;
     bool menudirty = true;
@@ -224,13 +346,13 @@ u16 menuInputs(s8* cursor, u16 startID, struct InputIDs inputids, u8 header, u8 
         }
         else if (keys & KEY_UP && !(prevkeys & KEY_UP))
         {
-            *cursor -= 1;
+            (*cursor)--;
             if (*cursor < 0) *cursor = numentries-1;
             menudirty = true;
         }
         else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
         {
-            *cursor += 1;
+            (*cursor)++;
             if (*cursor > numentries-1) *cursor = 0;
             menudirty = true;
         }
