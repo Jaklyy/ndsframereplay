@@ -243,7 +243,7 @@ void menuScreenshot()
     };
 
     s32 cursor = 0;
-    u8 selection = menuInputs(&cursor, 2, (struct InputIDs) {1,0,0}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
+    u8 selection = menuInputs(&cursor, 2, (struct InputIDs) {1,0,0}, (struct MenuDat) {1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array});
 
     switch(selection)
     {

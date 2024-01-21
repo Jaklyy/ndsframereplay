@@ -503,7 +503,7 @@ void menuMain(FILE** file)
     s32 cursor = 0;
     while (true)
     {
-        u32 selection = menuInputs(&cursor, 2, (struct InputIDs) {0,0,1}, 1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array);
+        u32 selection = menuInputs(&cursor, 2, (struct InputIDs) {0,0,1}, (struct MenuDat) {1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array});
         switch(selection)
         {
             case 1: // R button - screenshot

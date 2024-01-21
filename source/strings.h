@@ -69,7 +69,7 @@ extern u8 str_hint_rightadd[];
 extern u8 str_hint_radd10[];
 extern u8 str_hint_lsubt10[];
 extern u8 str_hint_rscreenshot[];
-
+extern u8 str_hint_selreload[];
 
 // menu errors
 extern u8 str_err_dir[];

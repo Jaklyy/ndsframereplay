@@ -45,9 +45,9 @@ u8 str_opt_initstate[] =    "\xF0""INITAL STATE\n";
 u8 str_opt_cmdlist[] =      "\xF0""COMMAND LIST\n";
 u8 str_opt_reset[] =        "\xF0""RESET CHANGES\n";
 
-u8 str_opt_r[] =            "\xF0""R: \xFF\xC2\xF0"" 0\x80";
-u8 str_opt_g[] =            "\xF0""G: \xFF\xC3\xF0"" 0\x80";
-u8 str_opt_b[] =            "\xF0""B: \xFF\xC4\xF0"" 0\x80";
+u8 str_opt_r[] =            "\xF0""R: \xFF\xC2\xF0"" ";
+u8 str_opt_g[] =            "\xF0""G: \xFF\xC3\xF0"" ";
+u8 str_opt_b[] =            "\xF0""B: \xFF\xC4\xF0"" ";
 
 // screenshotmenu 
 u8 str_opt_ss_full_bmp[] =  "\xF0""666 18 BIT BMP (EXPERIMENTAL)\n";
@@ -67,7 +67,7 @@ u8 str_hint_rightadd[] =    "\xF2""RIGHT: PLUS 1""\xF2";
 u8 str_hint_radd10[] =      "\xF2""R: PLUS 10""\xF2";
 u8 str_hint_lsubt10[] =     "\xF2""L: MINUS 10""\xF2";
 u8 str_hint_rscreenshot[] = "\xF2""R: SCREENSHOT""\xF2";
-
+u8 str_hint_selreload[] =   "\xF2""SEL: RELOAD""\xF2";
 
 // menu errors
 u8 str_err_dir[] =          "\xF1""ERROR: UNABLE TO OPEN DIRECTORY\nPLEASE TURN OFF THE SYSTEM\n";
