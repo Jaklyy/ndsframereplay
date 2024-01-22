@@ -128,17 +128,79 @@ void menuRender(s32 sel, struct MenuDat mdat)
     }
 }
 
-void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 shift, u8 mode, struct MenuDat mdat, u8** values)
+u16 prevkeys;
+u8 heldcounter[12] = {};
+
+void resetKeys()
+{
+    scanKeys();
+    prevkeys = keysHeld();
+    heldcounter = {};
+}
+
+u16 getPressed()
+{
+    scanKeys();
+    u16 keys = keysHeld();
+    keys &= 0xFFF;
+    
+    if (keys)
+    {
+        u16 held = keys & prevkeys;
+        for int (i = 0; i < 12; i++)
+        {
+            if (held & 1) heldcounter[i]++;
+            else heldcounter[i] = 0;
+
+            if heldcounter[i] == 60;
+            return (1 << i);
+        }
+    }
+    return keys & ~prevkeys;
+}
+
+u32 menuInputs(struct MenuDat m)
+{
+    bool menudirty = true;
+
+    resetKeys();
+    while (true)
+    {
+        swiWaitForVBlank();
+        if (menudirty)
+        {
+            menuRender(m);
+            menudirty = false;
+        }
+
+        u16 keys = getPressed();
+        
+    }
+}
+
+void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 mode, struct MenuDat mdat, u8*** values, ...)
 {
     u16 numentries = mdat.numstr - mdat.header - mdat.footerL - mdat.footerR;
+    va_list args;
+    va_start(args, values);
+
+    u8 numbits[16];
+    u8 shift[16];
+    for (int i = 0; i < numentries; i++)
+    {
+        numbits[i] = va_arg(args, int);
+        shift[i] = va_arg(args, int);
+    }
+    va_end(args);
 
     // set up a bit mask
-    u32 mask = 0;
-    for (int i = 0; i < numbits; i++)
-    {
-        mask <<= 1;
-        mask |= 0x1;
-    }
+    u32 mask[16] = {};
+    for (int j = 0; j < numentries; j++)
+        for (int i = 0; i < numbits[j]; i++)
+        {
+            mask[j] <<= 1;
+            mask[j] |= 0x1;
+        }
 
     u8* strend[16];
     u32 variable[16];
@@ -146,15 +208,17 @@ void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 sh
     for (int i = 0; i < numentries; i++)
     {
         strend[i] = strrchr(mdat.strings[i+1], ' ');
-        variable[i] = ((*toedit >> shift) >> (numbits * i)) & mask;
+        variable[i] = ((*toedit >> shift[i]) >> (numbits[i] * i)) & mask[i];
     }
     
-    if (mode == 1)
+    if (mode == 1 || mode == 2)
     {
         BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
-        BG_PALETTE_SUB[(PALETTE_SIZE*15)+2] = variable[0] & mask;
-        BG_PALETTE_SUB[(PALETTE_SIZE*15)+3] = (variable[1] & mask) << 5;
-        BG_PALETTE_SUB[(PALETTE_SIZE*15)+4] = (variable[2] & mask) << 10;
+        BG_PALETTE_SUB[(PALETTE_SIZE*15)+2] = variable[0];
+        BG_PALETTE_SUB[(PALETTE_SIZE*15)+3] = variable[1] << 5;
+        BG_PALETTE_SUB[(PALETTE_SIZE*15)+4] = variable[2] << 10;
+        if (mode == 2)
+            BG_PALETTE_SUB[(PALETTE_SIZE*15)+5] = variable[4] | variable[4] << 5 | variable[4] << 10;
     }
 
     bool menudirty = true;
@@ -175,34 +239,34 @@ void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 sh
 
         if (keys & KEY_RIGHT && !(prevkeys & KEY_RIGHT))
         {
-            variable[cursor] = (variable[cursor] + 1) & mask;
+            variable[cursor] = (variable[cursor] + 1) & mask[cursor];
 
-            if (values == NULL || values[variable[cursor]] == NULL)
+            if (values == NULL || values[cursor] == NULL|| (values[cursor])[variable[cursor]] == NULL)
                 sprintf(strend[cursor], " %li\n", variable[cursor]);
-            else strcpy(strend[cursor], values[variable[cursor]]);
+            else strcpy(strend[cursor], (values[cursor])[variable[cursor]]);
 
             if (mode == 1)
             {
                 BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
                 BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
                 
-                *toedit = variable[0] | variable[1] << 5 | variable[2] << 10;
+                *toedit = variable[0] << shift[0] | variable[1] << shift[1] | variable[2] << shift[2];
             }
             else
             {
-                *toedit &= ~(mask << shift);
-                *toedit |= (variable[cursor] << shift);
+                *toedit &= ~(mask[cursor] << shift[cursor]);
+                *toedit |= (variable[cursor] << shift[cursor]);
             }
             if (addr != NULL) (*addr)(*toedit, addroffs);
             menudirty = true;
         }
         else if (keys & KEY_LEFT && !(prevkeys & KEY_LEFT))
         {
-            variable[cursor] = (variable[cursor] - 1) & mask;
+            variable[cursor] = (variable[cursor] - 1) & mask[cursor];
 
-            if (values == NULL || values[variable[cursor]] == NULL)
+            if (values == NULL || values[cursor] == NULL|| (values[cursor])[variable[cursor]] == NULL)
                 sprintf(strend[cursor], " %li\n", variable[cursor]);
-            else strcpy(strend[cursor], values[variable[cursor]]);
+            else strcpy(strend[cursor], (values[cursor])[variable[cursor]]);
 
 
             if (mode == 1)
@@ -210,12 +274,12 @@ void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 sh
                 BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
                 BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
                 
-                *toedit = variable[0] | variable[1] << 5 | variable[2] << 10;
+                *toedit = variable[0] << shift[0] | variable[1] << shift[1] | variable[2] << shift[2];
             }
             else
             {
-                *toedit &= ~(mask << shift);
-                *toedit |= (variable[cursor] << shift);
+                *toedit &= ~(mask[cursor] << shift[cursor]);
+                *toedit |= (variable[cursor] << shift[cursor]);
             }
             if (addr != NULL) (*addr)(*toedit, addroffs);
             menudirty = true;
@@ -228,66 +292,63 @@ void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 numbits, u8 sh
         {
             return;
         }
-        if (numbits > 1)
+        else if (keys & KEY_R && !(prevkeys & KEY_R))
         {
-            if (keys & KEY_R && !(prevkeys & KEY_R))
+            if (variable[cursor] != mask[cursor])
             {
-                if (variable[cursor] != mask)
-                {
-                    variable[cursor] += 10;
-                    if (variable[cursor] > mask) variable[cursor] = mask;
-                }
-                else variable[cursor] = 0;
-
-                if (values == NULL || values[variable[cursor]] == NULL)
-                    sprintf(strend[cursor], " %li\n", variable[cursor]);
-                else strcpy(strend[cursor], values[variable[cursor]]);
-
-                if (mode == 1)
-                {
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
-
-                    *toedit = variable[0] | variable[1] << 5 | variable[2] << 10;
-                }
-                else
-                {
-                    *toedit &= ~(mask << shift);
-                    *toedit |= (variable[cursor] << shift);
-                }
-                if (addr != NULL) (*addr)(*toedit, addroffs);
-                menudirty = true;
+                variable[cursor] += 10;
+                if (variable[cursor] > mask[cursor]) variable[cursor] = mask[cursor];
             }
-            else if (keys & KEY_L && !(prevkeys & KEY_L))
+            else variable[cursor] = 0;
+        
+            if (values == NULL || values[cursor] == NULL|| (values[cursor])[variable[cursor]] == NULL)
+                sprintf(strend[cursor], " %li\n", variable[cursor]);
+            else strcpy(strend[cursor], (values[cursor])[variable[cursor]]);
+
+            if (mode == 1)
             {
-                if (variable[cursor] != 0)
-                {
-                    variable[cursor] -= 10;
-                    if (variable[cursor] > mask) variable[cursor] = 0;
-                }
-                else variable[cursor] = mask;
+                BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
+                BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
 
-                if (values == NULL || values[variable[cursor]] == NULL)
-                    sprintf(strend[cursor], " %li\n", variable[cursor]);
-                else strcpy(strend[cursor], values[variable[cursor]]);
-
-                if (mode == 1)
-                {
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
-
-                    *toedit = variable[0] | variable[1] << 5 | variable[2] << 10;
-                }
-                else
-                {
-                    *toedit &= ~(mask << shift);
-                    *toedit |= (variable[cursor] << shift);
-                }
-                if (addr != NULL) (*addr)(*toedit, addroffs);
-                menudirty = true;
+                *toedit = variable[0] << shift[0] | variable[1] << shift[1] | variable[2] << shift[2];
             }
+            else
+            {
+                *toedit &= ~(mask[cursor] << shift[cursor]);
+                *toedit |= (variable[cursor] << shift[cursor]);
+            }
+            if (addr != NULL) (*addr)(*toedit, addroffs);
+            menudirty = true;
         }
-        if (numentries > 1)
+        else if (keys & KEY_L && !(prevkeys & KEY_L))
+        {
+            if (variable[cursor] != 0)
+            {
+                variable[cursor] -= 10;
+                if (variable[cursor] > mask[cursor]) variable[cursor] = 0;
+            }
+            else variable[cursor] = mask[cursor];
+
+            if (values == NULL || values[cursor] == NULL|| (values[cursor])[variable[cursor]] == NULL)
+                sprintf(strend[cursor], " %li\n", variable[cursor]);
+            else strcpy(strend[cursor], (values[cursor])[variable[cursor]]);
+
+            if (mode == 1)
+            {
+                BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
+                BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
+
+                *toedit = variable[0] << shift[0] | variable[1] << shift[1] | variable[2] << shift[2];
+            }
+            else
+            {
+                *toedit &= ~(mask[cursor] << shift[cursor]);
+                *toedit |= (variable[cursor] << shift[cursor]);
+            }
+            if (addr != NULL) (*addr)(*toedit, addroffs);
+            menudirty = true;
+        }
+        else if (numentries > 1)
         {
             if (keys & KEY_UP && !(prevkeys & KEY_UP))
             {

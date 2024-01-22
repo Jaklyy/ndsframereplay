@@ -3,6 +3,11 @@
 
 
 
+void inputClearColor(u32 var, __attribute__((unused)) u8 offset)
+{
+    GFX_CLEAR_COLOR = var;
+}
+
 void inputAlphaRef(u32 var, __attribute__((unused)) u8 offset)
 {
     GFX_ALPHA_TEST = var;
@@ -16,6 +21,86 @@ void inputEdgeColor(u32 var, u8 offset)
 void input3DDispCnt(u32 var, __attribute__((unused)) u8 offset)
 {
     GFX_CONTROL = var;
+}
+
+void menuClearColor()
+{
+    u8 st_r[12];
+    u8 st_g[12];
+    u8 st_b[12];
+    u8 st_fog[9];
+    u8 st_a[12];
+    u8 st_id[8];
+
+    u8 r = clearcolor & 0x1F;
+    u8 g = (clearcolor >> 5) & 0x1F;
+    u8 b = (clearcolor >> 10) & 0x1F;
+    bool fog = (clearcolor >> 15) & 0x1;
+    u8 a = (clearcolor >> 16) & 0x1F;
+    u8 id = (clearcolor >> 24) & 0x3F;
+
+    sprintf(st_r, "%s%i\n", str_opt_r, r);
+    sprintf(st_g, "%s%i\n", str_opt_g, g);
+    sprintf(st_b, "%s%i\n", str_opt_b, b);
+    sprintf(st_a, "%s%i\n", str_opt_a, a);
+    sprintf(st_fog, "%s%s", str_opt_fog, str_state[fog]);
+    sprintf(st_id, "%s%i\n", str_opt_id, id);
+
+    u8* ptr_array[] =
+    {
+        str_sub_clearcolor,
+        st_r,
+        st_g,
+        st_b,
+        st_fog,
+        st_a,
+        st_id,
+        str_hint_bback,
+        str_hint_leftsubt,
+        str_hint_lsubt10,
+        str_hint_selreload,
+        str_hint_rightadd,
+        str_hint_radd10,
+    };
+
+    u8* vals[] =
+    {
+        str_state[0],
+        str_state[1],
+    };
+
+    u8** vals_array[] =
+    {
+        NULL,
+        NULL,
+        NULL,
+        vals,
+        NULL,
+        NULL,
+    };
+
+    menuEdit(&inputClearColor, 0, &clearcolor, 2, (struct MenuDat) {1, 3, 3, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array}, vals_array, 5, 0, 5, 5, 5, 10, 1, 15, 5, 16, 6, 24);
+}
+
+void menuAlphaTest()
+{
+    u32 var = alphatest;
+    u8 st_alpharef[15];
+    sprintf(st_alpharef, "ALPHA REF: %i", alphatest);
+    u8* ptr_array[] = 
+    {
+        str_sub_alpharef,
+        st_alpharef,
+        str_hint_bback,
+        str_hint_leftsubt,
+        str_hint_lsubt10,
+        str_hint_selreload,
+        str_hint_rightadd,
+        str_hint_radd10,
+    };
+
+    menuEdit(&inputAlphaRef, 0, &var, 0, (struct MenuDat) {1, 3, 3, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array}, NULL, 5, 0);
+    alphatest = var;
 }
 
 void menuEdgeColor()
@@ -37,9 +122,6 @@ void menuEdgeColor()
     u8 st_r[12] = "";
     u8 st_g[12] = "";
     u8 st_b[12] = "";
-    memcpy(st_r, str_opt_r, 10);
-    memcpy(st_g, str_opt_g, 10);
-    memcpy(st_b, str_opt_b, 10);
 
     u8* ptr_array2[] =
     {
@@ -77,12 +159,12 @@ void menuEdgeColor()
             u8 r = (edgecolor[sel] & 0x1F);
             u8 g = ((edgecolor[sel] >> 5) & 0x1F);
             u8 b = ((edgecolor[sel] >> 10) & 0x1F);
-            snprintf(&st_r[8], 4, "%i\n", r);
-            snprintf(&st_g[8], 4, "%i\n", g);
-            snprintf(&st_b[8], 4, "%i\n", b);
+            sprintf(st_r, "%s%i\n", str_opt_r, r);
+            sprintf(st_g, "%s%i\n", str_opt_g, g);
+            sprintf(st_b, "%s%i\n", str_opt_b, b);
 
             u32 var = edgecolor[sel];
-            menuEdit(&inputEdgeColor, sel, &var, 5, 0, 1, (struct MenuDat) {1, 3, 3, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, NULL);
+            menuEdit(&inputEdgeColor, sel, &var, 1, (struct MenuDat) {1, 3, 3, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, NULL, 5, 0, 5, 5, 5, 10);
             edgecolor[sel] = var;
         }
     }
@@ -95,43 +177,34 @@ void menuEdgeColor()
 void menu3DDispCnt()
 {
     u8 sttextures[16] = "";
-    memcpy(sttextures, str_3ddispcnt[0], 11);
-    strcat(sttextures, ((disp3dcnt >> 0) & 0x1) ? str_state[1] : str_state[0]);
+    sprintf(sttextures, "%s%s", str_3ddispcnt[0], str_state[(disp3dcnt >> 0) & 0x1]);
 
     u8 stshading[22] = "";
-    memcpy(stshading, str_3ddispcnt[1], 11);
-    strcat(stshading, ((disp3dcnt >> 1) & 0x1) ? str_shading[1] : str_shading[0]);
+    sprintf(stshading, "%s%s", str_3ddispcnt[1], str_shading[(disp3dcnt >> 1) & 0x1]);
 
     u8 stalphatest[16] = "";
-    memcpy(stalphatest, str_3ddispcnt[2], 11);
-    strcat(stalphatest, ((disp3dcnt >> 2) & 0x1) ? str_state[1] : str_state[0]);
+    sprintf(stalphatest, "%s%s", str_3ddispcnt[2], str_state[(disp3dcnt >> 2) & 0x1]);
 
     u8 stblend[16] = "";
-    memcpy(stblend, str_3ddispcnt[3], 11);
-    strcat(stblend, ((disp3dcnt >> 3) & 0x1) ? str_state[1] : str_state[0]);
+    sprintf(stblend, "%s%s", str_3ddispcnt[3], str_state[(disp3dcnt >> 3) & 0x1]);
 
     u8 stalias[16] = "";
-    memcpy(stalias, str_3ddispcnt[4], 11);
-    strcat(stalias, ((disp3dcnt >> 4) & 0x1) ? str_state[1] : str_state[0]);
+    sprintf(stalias, "%s%s", str_3ddispcnt[4], str_state[(disp3dcnt >> 4) & 0x1]);
 
     u8 stedge[16] = "";
-    memcpy(stedge, str_3ddispcnt[5], 11);
-    strcat(stedge, ((disp3dcnt >> 5) & 0x1) ? str_state[1] : str_state[0]);
+    sprintf(stedge, "%s%s", str_3ddispcnt[5], str_state[(disp3dcnt >> 5) & 0x1]);
 
     u8 stfogmode[23] = "";
-    memcpy(stfogmode, str_3ddispcnt[6], 11);
-    strcat(stfogmode, ((disp3dcnt >> 6) & 0x1) ? str_fogmode[1] : str_fogmode[0]);
+    sprintf(stfogmode, "%s%s", str_3ddispcnt[6], str_fogmode[(disp3dcnt >> 6) & 0x1]);
 
     u8 stfog[16] = "";
-    memcpy(stfog, str_3ddispcnt[7], 11);
-    strcat(stfog, ((disp3dcnt >> 7) & 0x1) ? str_state[1] : str_state[0]);
+    sprintf(stfog, "%s%s", str_3ddispcnt[7], str_state[(disp3dcnt >> 7) & 0x1]);
 
     u8 stfogshift[16] = "";
     sprintf(stfogshift, "%s %i\n", str_3ddispcnt[8], (disp3dcnt >> 8) & 0xF);
 
     u8 stplane[19] = "";
-    memcpy(stplane, str_3ddispcnt[9], 11);
-    strcat(stplane, ((disp3dcnt >> 14) & 0x1) ? str_rearplane[1] : str_rearplane[0]);
+    sprintf(stplane, "%s%s", str_3ddispcnt[9], str_rearplane[(disp3dcnt >> 14) & 0x1]);
 
     u8* ptr_array[] =
     {
@@ -189,105 +262,141 @@ void menu3DDispCnt()
             case 3: // texture toggle
             {
                 ptr_array2[1] = sttextures;
-                u8* vals[] = 
+                u8* vals0[] = 
                 {
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, 0, &var, 1, 0, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals);
+                u8** vals[] =
+                {
+                    vals0
+                };
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 0);
                 break;
             }
             case 4: // shading mode
             {
                 ptr_array2[1] = stshading;
-                u8* vals[] =
+                u8* vals0[] =
                 {
                     str_shading[0],
                     str_shading[1],
                 };
-                menuEdit(&input3DDispCnt, 0, &var, 1, 1, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals);
+                u8** vals[] =
+                {
+                    vals0
+                };
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 1);
                 break;
             }
             case 5: // alpha test toggle
             {
                 ptr_array2[1] = stalphatest;
-                u8* vals[] = 
+                u8* vals0[] = 
                 {
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, 0, &var, 1, 2, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals);
+                u8** vals[] =
+                {
+                    vals0
+                };
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 2);
                 break;
             }
             case 6: // translucency blend toggle
             {
                 ptr_array2[1] = stblend;
-                u8* vals[] = 
+                u8* vals0[] = 
                 {
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, 0, &var, 1, 3, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals);
+                u8** vals[] =
+                {
+                    vals0
+                };
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 3);
                 break;
             }
             case 7: // aa toggle
             {
                 ptr_array2[1] = stalias;
-                u8* vals[] = 
+                u8* vals0[] = 
                 {
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, 0, &var, 1, 4, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals);
+                u8** vals[] =
+                {
+                    vals0
+                };
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 4);
                 break;
             }
             case 8: // edge marking toggle
             {
                 ptr_array2[1] = stedge;
-                u8* vals[] = 
+                u8* vals0[] = 
                 {
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, 0, &var, 1, 5, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals);
+                u8** vals[] =
+                {
+                    vals0
+                };
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 5);
                 break;
             }
             case 9: // fog mode toggle
             {
                 ptr_array2[1] = stfogmode;
-                u8* vals[] = 
+                u8* vals0[] = 
                 {
                     str_fogmode[0],
                     str_fogmode[1],
                 };
-                menuEdit(&input3DDispCnt, 0, &var, 1, 6, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals);
+                u8** vals[] =
+                {
+                    vals0
+                };
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 6);
                 break;
             }
             case 10: // fog toggle
             {
                 ptr_array2[1] = stfog;
-                u8* vals[] = 
+                u8* vals0[] = 
                 {
                     str_state[0],
                     str_state[1],
                 };
-                menuEdit(&input3DDispCnt, 0, &var, 1, 7, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals);
+                u8** vals[] =
+                {
+                    vals0
+                };
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 7);
                 break;
             }
             case 11: // fog shift variable
             {
-                menuEdit(&input3DDispCnt, 0, &var, 4, 8, 0, (struct MenuDat) {1, 3, 3, sizeof(ptr_array3) / sizeof(ptr_array3[0]), ptr_array3}, NULL);
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 3, 3, sizeof(ptr_array3) / sizeof(ptr_array3[0]), ptr_array3}, NULL, 4, 8);
                 break;
             }
             case 12: // rear plane mode toggle
             {
                 ptr_array2[1] = stplane;
-                u8* vals[] = 
+                u8* vals0[] = 
                 {
                     str_rearplane[0],
                     str_rearplane[1],
                 };
-                menuEdit(&input3DDispCnt, 0, &var, 1, 14, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals);
+                u8** vals[] =
+                {
+                    vals0
+                };
+                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 14);
                 break;
             }
         }
@@ -332,26 +441,10 @@ void menuEditVars()
                 menuEdgeColor();
                 break;
             case 2: // alpha test ref
-            {
-                u32 var = alphatest;
-                u8 st_alpharef[15];
-                sprintf(st_alpharef, "ALPHA REF: %i", alphatest);
-                u8* ptr_array2[] = 
-                {
-                    str_sub_editparam,
-                    st_alpharef,
-                    str_hint_bback,
-                    str_hint_leftsubt,
-                    str_hint_lsubt10,
-                    str_hint_selreload,
-                    str_hint_rightadd,
-                    str_hint_radd10,
-                };
-                menuEdit(&inputAlphaRef, 0, &var, 5, 0, 0, (struct MenuDat) {1, 3, 3, sizeof(ptr_array2) / sizeof(ptr_array[0]), ptr_array2}, NULL);
-                alphatest = var;
+                menuAlphaTest();
                 break;
-            }
             case 3: // clear color
+                menuClearColor();
                 break;
             case 4: // clear depth
                 break;

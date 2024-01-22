@@ -19,6 +19,8 @@ extern u8 str_sub_edgecolor[];
 extern u8 str_sub_gx[];
 extern u8 str_sub_editparam[];
 extern u8 str_sub_color[];
+extern u8 str_sub_alpharef[];
+extern u8 str_sub_clearcolor[];
 
 // menu options
 // directory menu
@@ -50,6 +52,9 @@ extern u8 str_opt_reset[];
 extern u8 str_opt_r[];
 extern u8 str_opt_g[];
 extern u8 str_opt_b[];
+extern u8 str_opt_a[];
+extern u8 str_opt_fog[];
+extern u8 str_opt_id[];
 
 // screenshotmenu 
 extern u8 str_opt_ss_full_bmp[];

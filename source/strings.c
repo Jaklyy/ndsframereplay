@@ -18,6 +18,8 @@ u8 str_sub_edgecolor[] =    "\xF2""EDIT EDGE COLORS:\n";
 u8 str_sub_gx[] =           "\xF2""SELECT COMMAND:\n";
 u8 str_sub_editparam[] =    "\xF2""EDIT PARAMETER:\n";
 u8 str_sub_color[] =        "\xF2""EDIT COLOR: \xFF\xC1\n";
+u8 str_sub_alpharef[] =     "\xF2""EDIT ALPHA REF:\n";
+u8 str_sub_clearcolor[] =   "\xF2""EDIT CLEAR COLOR: \xFF\xC1\n";
 
 // menu options
 // directory menu
@@ -45,9 +47,12 @@ u8 str_opt_initstate[] =    "\xF0""INITAL STATE\n";
 u8 str_opt_cmdlist[] =      "\xF0""COMMAND LIST\n";
 u8 str_opt_reset[] =        "\xF0""RESET CHANGES\n";
 
-u8 str_opt_r[] =            "\xF0""R: \xFF\xC2\xF0"" ";
-u8 str_opt_g[] =            "\xF0""G: \xFF\xC3\xF0"" ";
-u8 str_opt_b[] =            "\xF0""B: \xFF\xC4\xF0"" ";
+u8 str_opt_r[] =            "\xF0""R: \xFF\xC2\xF0 ";
+u8 str_opt_g[] =            "\xF0""G: \xFF\xC3\xF0 ";
+u8 str_opt_b[] =            "\xF0""B: \xFF\xC4\xF0 ";
+u8 str_opt_a[] =            "\xF0""A: \xFF\xC5\xF0 ";
+u8 str_opt_fog[] =          "\xF0""FOG:";
+u8 str_opt_id[] =           "\xF0""ID: ";
 
 // screenshotmenu 
 u8 str_opt_ss_full_bmp[] =  "\xF0""666 18 BIT BMP (EXPERIMENTAL)\n";
