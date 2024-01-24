@@ -15,7 +15,7 @@
 void menuScreenshot();
 void initDispCap();
 
-bool menuDirSelect();
+bool menuDirSelect(bool exit);
 FILE* menuFileSelect();
 
 void menuEditVars();

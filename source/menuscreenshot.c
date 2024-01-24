@@ -233,29 +233,37 @@ void doScreenshot(bool color18, bool bitmap)
 
 void menuScreenshot()
 {
-    u8* ptr_array[] =
+    u8* headers[] =
     {
         str_menu_ss,
-        str_opt_ss_norm_bmp,
-        str_opt_ss_full_bmp,
-        str_hint_bback,
-        str_hint_asel,
+        NULL,
+    };
+
+    struct MenuEntry entries[] = 
+    {
+        {
+            .String = str_opt_ss_norm_bmp,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_ss_full_bmp,
+            .Type = Entry_Button,
+        },
     };
 
     s32 cursor = 0;
-    u8 selection = menuInputs(&cursor, 2, (struct InputIDs) {1,0,0}, (struct MenuDat) {1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array});
+    u32 selection = menuInputs((struct MenuDat) {&cursor, headers, entries, sizeof(entries)/sizeof(entries[0]),
+        (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Exit = KEY_B}});
 
     switch(selection)
     {
-        case 1:
-            return;
-
-        case 2:
+        case 0:
             doScreenshot(false, true);
             break;
-
-        case 3:
+        case 1:
             doScreenshot(true, true);
             break;
+        case RetExit:
+            return;
     }
 }

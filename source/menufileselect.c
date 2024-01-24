@@ -4,7 +4,7 @@
 
 
 
-bool menuDirSelect()
+bool menuDirSelect(bool exit)
 {    
     bool usingfoldersd = false;
     bool usingfolderfat = false;
@@ -23,108 +23,103 @@ bool menuDirSelect()
     DIR* nitrodir = opendir("nitro:/");
 
     // check if any dir was found.
-    if ((nitrodir != NULL) && (fatdir != NULL) && (sddir != NULL))
+    if ((nitrodir == NULL) && (fatdir == NULL) && (sddir == NULL))
     {
         menuWriteSingle(str_err_dir);
-        waitForInput();
-        exit(0);
+        while(true) swiWaitForVBlank();
     }
 
-    u8* ptr_array[6] = {[0] = str_menu_seldir};
-    int i = 1;
+    u8* headers[] =
+    {
+        str_menu_seldir,
+        NULL,
+    };
+
+    struct MenuEntry ent_nitro =
+    {
+        .String = str_opt_nitro,
+        .SubType = 1,
+        .Type = Entry_Button,
+    };
+
+    struct MenuEntry ent_sd =
+    {
+        .String = str_opt_sd,
+        .SubType = 2,
+        .Type = Entry_Button,
+    };
+
+    struct MenuEntry ent_fc =
+    {
+        .String = str_opt_fc,
+        .SubType = 3,
+        .Type = Entry_Button,
+    };
+
+    struct MenuEntry entries[3];
+
+    int i = 0;
     if (nitrodir != NULL)
     {
-        ptr_array[i] = str_opt_nitro;
+        entries[i] = ent_nitro;
         i++;
     }
     if (sddir != NULL)
     {
-        ptr_array[i] = str_opt_sd;
+        entries[i] = ent_sd;
         i++;
     }
     if (fatdir != NULL)
     {
-        ptr_array[i] = str_opt_fc;
+        entries[i] = ent_fc;
         i++;
     }
 
-    ptr_array[i] = str_hint_bback;
-    i++;
-
-    ptr_array[i] = str_hint_asel;
-    i++;
-
     s32 cursor = 0;
-    u32 selection = menuInputs(&cursor, 0, (struct InputIDs) {3,0,0}, (struct MenuDat) {1, 1, 1, i, ptr_array});
-    if (selection == 3)
+    u32 selection = menuInputs((struct MenuDat) {&cursor, headers, entries, i,
+        (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Exit = (exit ? KEY_B : 0)}});
+
+    switch (selection)
     {
-        closedir(nitrodir);
-        closedir(fatdir);
-        closedir(sddir);
-        return false;
-    }
-    else if (selection == 2)
-    {
-        closedir(nitrodir);
-        closedir(fatdir);
-        closedir(sddir);
-        chdir((usingfolderfat ? "fat:/framedumps" : "fat:/"));
-        return true;
-    }
-    else if (selection == 1)
-    {
-        if (nitrodir == NULL || sddir == NULL)
-        {
-            closedir(nitrodir);
-            closedir(fatdir);
-            closedir(sddir);
-            chdir((usingfolderfat ? "fat:/framedumps" : "fat:/"));
-            return true;
-        }
-        else // fat dir
-        {
-            closedir(nitrodir);
-            closedir(fatdir);
-            closedir(sddir);
-            chdir((usingfoldersd ? "sd:/framedumps" : "sd:/"));
-            return true;
-        }
-    }
-    else // sel 0
-    {
-        if (nitrodir != NULL)
-        {
+        case 1:
             closedir(nitrodir);
             closedir(fatdir);
             closedir(sddir);
             chdir("nitro:/");
             return true;
-        }
-        else if (sddir != NULL)
-        {
+        case 2:
+            closedir(nitrodir);
             closedir(fatdir);
             closedir(sddir);
             chdir((usingfoldersd ? "sd:/framedumps" : "sd:/"));
             return true;
-        }
-        else // only fat remains
-        {
+        case 3:
+            closedir(nitrodir);
             closedir(fatdir);
+            closedir(sddir);
             chdir((usingfolderfat ? "fat:/framedumps" : "fat:/"));
             return true;
-        }
+        case RetExit:
+            closedir(nitrodir);
+            closedir(fatdir);
+            closedir(sddir);
+            return false;
+        default:
+            __builtin_unreachable();
     }
 }
 
 FILE* menuFileSelect()
 {
-    u8* ptr_array[25];
-    u8* filename_ptrs[22];
-    ptr_array[0] = str_menu_selfile;
+    struct MenuEntry entries[22] = {};
+    for (u32 i = 0; i < sizeof(entries)/sizeof(entries[0]); i++)
+        entries[i].Type = Entry_Button;
+
+    u8* filename_ptrs[sizeof(entries)/sizeof(entries[0])];
     DIR* dir = opendir(".");
 
-    u8 counter = 1;
-    for (int i = 0; counter <= 22+1 && i < 256; i++)
+    u8 counter = 0;
+    for (int i = 0; counter < 22 && i < 256; i++)
     {
         char png[] = ".png";
         char ndsfd[] = ".ndsfd";
@@ -136,36 +131,40 @@ FILE* menuFileSelect()
         
         if (strcmp(loc, png) == 0 || strcmp(loc, ndsfd) == 0)
         {
-            ptr_array[counter] = calloc(33, sizeof(u8)); // needs to be a calloc or else it ubs
-            filename_ptrs[counter-1] = malloc(255);
-            memcpy(filename_ptrs[counter-1], dat->d_name, 255);
-            memcpy(ptr_array[counter], dat->d_name, 31);
-            strcat(ptr_array[counter], "\n"); // also ensures the string ends with a null character
+            entries[counter].String = calloc(33, sizeof(u8)); // needs to be a calloc or else it ubs
+            filename_ptrs[counter] = malloc(strlen(dat->d_name)+1);
+            strcpy(filename_ptrs[counter], dat->d_name);
+            memcpy(entries[counter].String, dat->d_name, 31);
+            strcat(entries[counter].String, "\n"); // also ensures the string ends with a null character
             counter++;
         }
     }
 
     closedir(dir);
 
-    if (counter == 1)
+    if (counter == 0)
     {
         menuWriteSingle(str_err_file);
         waitForInput();
         return NULL;
     }
-
-    ptr_array[counter++] = str_hint_bback;
-    ptr_array[counter++] = str_hint_asel;
     
-    s32 cursor = 0;
-    s32 selection = menuInputs(&cursor, 2, (struct InputIDs) {1,0,0}, (struct MenuDat) {1, 1, 1, counter, ptr_array}) - 2;
-
-    if (selection == -1)
+    u8* headers[] =
     {
-        for (int i = 0; i < counter - 3; i++)
+        str_menu_selfile,
+        NULL,
+    };
+
+    s32 cursor = 0;
+    s32 selection = menuInputs((struct MenuDat) {&cursor, headers, entries, counter,
+        (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Exit = KEY_B}});
+
+    if (selection == RetExit)
+    {
+        for (int i = 0; i < counter; i++)
         {
             free(filename_ptrs[i]);
-            free(ptr_array[i+1]);
+            free(entries[i].String);
         }
         return NULL;
     }
@@ -174,14 +173,14 @@ FILE* menuFileSelect()
 
     if (file == NULL)
     {
-        menuWriteSingle("OOPS\n");
+        menuWriteSingle("\xF2""FILE OPEN ERROR: OOPSIE\n");
         while (true) swiWaitForVBlank();
     }
     
-    for (int i = 0; i < counter - 3; i++)
+    for (int i = 0; i < counter; i++)
     {
         free(filename_ptrs[i]);
-        free(ptr_array[i+1]);
+        free(entries[i].String);
     }
 
     return file;

@@ -98,72 +98,72 @@ void menuInit()
     BG_PALETTE_SUB[(PALETTE_SIZE*2)+1] = 0x3FF; // yellow
 }
 
-void menuRender(s32 sel, struct MenuDat mdat)
+void menuRender(struct MenuDat m)
 {
     menuClear();
-    s32 j = 0;
-    for (int i = 0; i < mdat.header; i++)
+    for (int i = 0; m.Headers[i] != NULL; i++)
     {
-        menuWrite(mdat.strings[j++]);
-        sel++;
+        menuWrite(m.Headers[i]);
     }
 
-    mdat.numstr -= (mdat.footerL + mdat.footerR);
-    for (;j < mdat.numstr; j++)
+    for (int i = 0; i < m.NumEntries; i++)
     {
-        if (j == sel) mapWrite(caret, 0);
+        if (i == *m.Cursor) mapWrite(caret, 0);
         else mapWrite(0, 0);
-        menuWrite(mdat.strings[j]);
+
+        if (m.Entry[i].Type == Entry_Color)
+        {
+            u8 string[31] = "";
+            u8 sub = m.Entry[i].SubType;
+            u8 palette = 0;
+            u16 color = (*m.Entry[i].Var >> m.Entry[i].Shift) & m.Entry[i].Mask;
+            if (m.Entry[i].Mask > 31) color >>= 1; // assumes 6 bit color is the max
+            switch (sub)
+            {
+                case Sub_Red:
+                    palette = '\xF2';
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~0x1F) | color;
+                    break;
+                case Sub_Green:
+                    palette = '\xF3';
+                    color <<= 5;
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<5)) | color;
+                    break;
+                case Sub_Blue:
+                    palette = '\xF4';
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<10)) | color;
+                    color <<= 10;
+                    break;
+                case Sub_Alpha:
+                    palette = '\xF5';
+                    color = color | color << 5 | color << 10;
+                    break;
+            }
+            BG_PALETTE_SUB[(PALETTE_SIZE*15) + 2 + sub] = color;
+            
+            sprintf(string, "%s \xFF%c\xF0 %i", m.Entry[i].String, palette, color);
+            menuWrite(string);
+        }
+        else menuWrite(m.Entry[i].String);
     }
 
-    for (int i = 0; i < mdat.footerL; i++)
-    {
-        menucursor = MAP_AREA - (MAP_WIDTH * (mdat.footerL - i));
-        menuWrite(mdat.strings[j++]);
-    }
+    /*int i = 0;
+    menucursor = MAP_AREA - (MAP_WIDTH * (mdat.footerL - i));
+    menuWrite(mdat.strings[j++]);
+
     for (int i = 0; i < mdat.footerR; i++)
     {
         menucursor = MAP_AREA - (MAP_WIDTH * (mdat.footerR - i - 1) + 1);
         menuWriteRev(mdat.strings[j++]);
-    }
-}
-
-u16 prevkeys;
-u8 heldcounter[12] = {};
-
-void resetKeys()
-{
-    scanKeys();
-    prevkeys = keysHeld();
-    heldcounter = {};
-}
-
-u16 getPressed()
-{
-    scanKeys();
-    u16 keys = keysHeld();
-    keys &= 0xFFF;
-    
-    if (keys)
-    {
-        u16 held = keys & prevkeys;
-        for int (i = 0; i < 12; i++)
-        {
-            if (held & 1) heldcounter[i]++;
-            else heldcounter[i] = 0;
-
-            if heldcounter[i] == 60;
-            return (1 << i);
-        }
-    }
-    return keys & ~prevkeys;
+    }*/
 }
 
 u32 menuInputs(struct MenuDat m)
 {
+    #define ENTRY   m.Entry[*m.Cursor]
+
     bool menudirty = true;
 
-    resetKeys();
     while (true)
     {
         swiWaitForVBlank();
@@ -173,12 +173,109 @@ u32 menuInputs(struct MenuDat m)
             menudirty = false;
         }
 
-        u16 keys = getPressed();
+        scanKeys();
+        u16 keys = keysDown();
+        u16 keysrep = keysDownRepeat();
         
+        if (m.NumEntries > 1)
+        {
+            if (m.Inputs.ScrollUp & keysrep)
+            {
+                (*m.Cursor)--;
+                if (*m.Cursor < 0) *m.Cursor = m.NumEntries-1;
+                menudirty = true;
+            }
+            if (m.Inputs.ScrollDown & keysrep)
+            {
+                (*m.Cursor)++;
+                if (*m.Cursor > m.NumEntries-1) *m.Cursor = 0;
+                menudirty = true;
+            }
+            if (m.Inputs.PageUp & keysrep)
+            {
+                // todo
+            }
+            if (m.Inputs.PageDown & keysrep)
+            {
+                // todo
+            }
+        }
+        if ((ENTRY.Type == Entry_Button) && (m.Inputs.Select & keys))
+        {
+            if (ENTRY.SubType == 0) return *m.Cursor;
+            else return ENTRY.SubType;
+        }
+        if ((ENTRY.Type == Entry_Int || ENTRY.Type == Entry_Color))
+        {
+            u32 var = (*ENTRY.Var >> ENTRY.Shift) & ENTRY.Mask;
+            if (m.Inputs.Add1 & keysrep)
+            {
+                var++;
+                var &= ENTRY.Mask;
+
+                *ENTRY.Var = (*ENTRY.Var & ~(ENTRY.Mask << ENTRY.Shift)) | var << ENTRY.Shift;
+
+                if (ENTRY.Addr != NULL) (*ENTRY.Addr)(*ENTRY.Var, ENTRY.AddrOffs);
+                menudirty = true;
+            }
+            if (m.Inputs.Sub1 & keysrep)
+            {
+                var--;
+                var &= ENTRY.Mask;
+
+                *ENTRY.Var = (*ENTRY.Var & ~(ENTRY.Mask << ENTRY.Shift)) | var << ENTRY.Shift;
+
+                if (ENTRY.Addr != NULL) (*ENTRY.Addr)(*ENTRY.Var, ENTRY.AddrOffs);
+                menudirty = true;
+            }
+            if (m.Inputs.Add10 & keysrep)
+            {
+                if (var != ENTRY.Mask)
+                {
+                    var += 10;
+                    if (var > ENTRY.Mask) var = ENTRY.Mask;
+                }
+                else var = 0;
+
+                *ENTRY.Var = (*ENTRY.Var & ~(ENTRY.Mask << ENTRY.Shift)) | var << ENTRY.Shift;
+
+                if (ENTRY.Addr != NULL) (*ENTRY.Addr)(*ENTRY.Var, ENTRY.AddrOffs);
+                menudirty = true;
+            }
+            if (m.Inputs.Sub10 & keysrep)
+            {
+                if (var != 0)
+                {
+                    var -= 10;
+                    if (var > ENTRY.Mask) var = 0;
+                }
+                else var = ENTRY.Mask;
+
+                *ENTRY.Var = (*ENTRY.Var & ~(ENTRY.Mask << ENTRY.Shift)) | var << ENTRY.Shift;
+
+                if (ENTRY.Addr != NULL) (*ENTRY.Addr)(*ENTRY.Var, ENTRY.AddrOffs);
+                menudirty = true;
+            }
+        }
+        if (m.Inputs.Reload & keys)
+        {
+            runDump(true);
+        }
+        if (m.Inputs.Screenshot & keys)
+        {
+            return RetScreenshot;
+        }
+        if (m.Inputs.Exit & keys)
+        {
+            return RetExit;
+        }
     }
+    #ifdef ENTRY
+    #undef ENTRY
+    #endif
 }
 
-void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 mode, struct MenuDat mdat, u8*** values, ...)
+/*void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 mode, struct MenuDat mdat, u8*** values, ...)
 {
     u16 numentries = mdat.numstr - mdat.header - mdat.footerL - mdat.footerR;
     va_list args;
@@ -366,9 +463,9 @@ void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 mode, struct M
 
         prevkeys = keys;
     }
-}
+}*/
 
-u32 menuInputs(s32* cursor, u16 startID, struct InputIDs inputids, struct MenuDat mdat)
+/*u32 menuInputs(s32* cursor, u16 startID, struct InputIDs inputids, struct MenuDat mdat)
 {
     u16 numentries = mdat.numstr - mdat.header - mdat.footerL - mdat.footerR;
     bool menudirty = true;
@@ -415,4 +512,4 @@ u32 menuInputs(s32* cursor, u16 startID, struct InputIDs inputids, struct MenuDa
         }
         prevkeys = keys;
     }
-}
+}*/

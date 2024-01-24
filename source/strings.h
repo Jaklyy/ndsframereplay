@@ -95,18 +95,20 @@ extern u8 str_cmd[];
 
 extern u8 str_null[];
 
-// lookup table for graphics command names
+// lookup tables
 extern u8 str_cmds[256][10];
 
 extern u8 str_matrix[][8];
 
-extern u8 str_state[][6];
+extern u8* str_state[];
+
+extern u8 str_inputs[][4];
 
 extern u8 str_3ddispcnt[][11];
 
-extern u8 str_shading[][12];
+extern u8* str_shading[];
 
-extern u8 str_fogmode[][13];
+extern u8* str_fogmode[];
 
-extern u8 str_rearplane[][9];
+extern u8* str_rearplane[];
 #endif

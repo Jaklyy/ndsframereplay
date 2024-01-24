@@ -23,7 +23,7 @@ void input3DDispCnt(u32 var, __attribute__((unused)) u8 offset)
     GFX_CONTROL = var;
 }
 
-void menuClearColor()
+/*void menuClearColor()
 {
     u8 st_r[12];
     u8 st_g[12];
@@ -172,7 +172,7 @@ void menuEdgeColor()
     exit:
     for (int i = 0+1; i < 8+1; i++)
         free(ptr_array[i]);
-}
+}*/
 
 void menu3DDispCnt()
 {
@@ -206,231 +206,175 @@ void menu3DDispCnt()
     u8 stplane[19] = "";
     sprintf(stplane, "%s%s", str_3ddispcnt[9], str_rearplane[(disp3dcnt >> 14) & 0x1]);
 
-    u8* ptr_array[] =
+    u8* headers[] =
     {
         str_sub_3ddispcnt,
-        sttextures,
-        stshading,
-        stalphatest,
-        stblend,
-        stalias,
-        stedge,
-        stfogmode,
-        stfog,
-        stfogshift,
-        stplane,
-        str_hint_bback,
-        str_hint_aedit,
-        str_hint_selreload,
+        NULL,
+    };
+
+    u32 var = disp3dcnt;
+    struct MenuEntry entries[] =
+    {
+        {
+            .Addr = &input3DDispCnt,
+            .String = sttextures,
+            .Values = str_state,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 0,
+            .Mask = 0x1,
+        },
+        {
+            .Addr = &input3DDispCnt,
+            .String = stshading,
+            .Values = str_shading,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 1,
+            .Mask = 0x1,
+        },
+        {
+            .Addr = &input3DDispCnt,
+            .String = stalphatest,
+            .Values = str_state,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 2,
+            .Mask = 0x1,
+        },
+        {
+            .Addr = &input3DDispCnt,
+            .String = stblend,
+            .Values = str_state,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 3,
+            .Mask = 0x1,
+        },
+        {
+            .Addr = &input3DDispCnt,
+            .String = stalias,
+            .Values = str_state,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 4,
+            .Mask = 0x1,
+        },
+        {
+            .Addr = &input3DDispCnt,
+            .String = stedge,
+            .Values = str_state,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 5,
+            .Mask = 0x1,
+        },
+        {
+            .Addr = &input3DDispCnt,
+            .String = stfogmode,
+            .Values = str_fogmode,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 6,
+            .Mask = 0x1,
+        },
+        {
+            .Addr = &input3DDispCnt,
+            .String = stfog,
+            .Values = str_state,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 7,
+            .Mask = 0x1,
+        },
+        {
+            .Addr = &input3DDispCnt,
+            .String = stfogshift,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 8,
+            .Mask = 0xF,
+        },
+        {
+            .Addr = &input3DDispCnt,
+            .String = stplane,
+            .Values = str_rearplane,
+            .Var = &var,
+            .Type = Entry_Int,
+            .Shift = 14,
+            .Mask = 0x1,
+        },
     };
 
     s32 cursor = 0;
-    while (true)
-    {
-        u32 sel = menuInputs(&cursor, 3, (struct InputIDs) {1, 2, 0}, (struct MenuDat) {1, 1, 2, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array});
+    menuInputs((struct MenuDat){&cursor, headers, entries, sizeof(entries)/sizeof(entries[0]),
+        (struct InputIDs){.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Exit = KEY_B, .Add1 = KEY_RIGHT, .Sub1 = KEY_LEFT, .Add10 = KEY_R, .Sub10 = KEY_L, .Reload = KEY_Y, .Reset = KEY_X}});
 
-        u8* ptr_array2[] = 
-        {
-            str_sub_3ddispcnt,
-            str_null,
-            str_hint_bback,
-            str_hint_leftsubt,
-            str_hint_selreload,
-            str_hint_rightadd,
-        };
-
-        u8* ptr_array3[] =
-        {
-            str_sub_3ddispcnt,
-            stfogshift,
-            str_hint_bback,
-            str_hint_leftsubt,
-            str_hint_lsubt10,
-            str_hint_selreload,
-            str_hint_rightadd,
-            str_hint_radd10,
-        };
-
-        u32 var = disp3dcnt;
-        switch(sel)
-        {
-            case 1: // back
-                return;
-            case 2:
-                runDump(true);
-                break;
-            case 3: // texture toggle
-            {
-                ptr_array2[1] = sttextures;
-                u8* vals0[] = 
-                {
-                    str_state[0],
-                    str_state[1],
-                };
-                u8** vals[] =
-                {
-                    vals0
-                };
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 0);
-                break;
-            }
-            case 4: // shading mode
-            {
-                ptr_array2[1] = stshading;
-                u8* vals0[] =
-                {
-                    str_shading[0],
-                    str_shading[1],
-                };
-                u8** vals[] =
-                {
-                    vals0
-                };
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 1);
-                break;
-            }
-            case 5: // alpha test toggle
-            {
-                ptr_array2[1] = stalphatest;
-                u8* vals0[] = 
-                {
-                    str_state[0],
-                    str_state[1],
-                };
-                u8** vals[] =
-                {
-                    vals0
-                };
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 2);
-                break;
-            }
-            case 6: // translucency blend toggle
-            {
-                ptr_array2[1] = stblend;
-                u8* vals0[] = 
-                {
-                    str_state[0],
-                    str_state[1],
-                };
-                u8** vals[] =
-                {
-                    vals0
-                };
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 3);
-                break;
-            }
-            case 7: // aa toggle
-            {
-                ptr_array2[1] = stalias;
-                u8* vals0[] = 
-                {
-                    str_state[0],
-                    str_state[1],
-                };
-                u8** vals[] =
-                {
-                    vals0
-                };
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 4);
-                break;
-            }
-            case 8: // edge marking toggle
-            {
-                ptr_array2[1] = stedge;
-                u8* vals0[] = 
-                {
-                    str_state[0],
-                    str_state[1],
-                };
-                u8** vals[] =
-                {
-                    vals0
-                };
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 5);
-                break;
-            }
-            case 9: // fog mode toggle
-            {
-                ptr_array2[1] = stfogmode;
-                u8* vals0[] = 
-                {
-                    str_fogmode[0],
-                    str_fogmode[1],
-                };
-                u8** vals[] =
-                {
-                    vals0
-                };
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 6);
-                break;
-            }
-            case 10: // fog toggle
-            {
-                ptr_array2[1] = stfog;
-                u8* vals0[] = 
-                {
-                    str_state[0],
-                    str_state[1],
-                };
-                u8** vals[] =
-                {
-                    vals0
-                };
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 7);
-                break;
-            }
-            case 11: // fog shift variable
-            {
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 3, 3, sizeof(ptr_array3) / sizeof(ptr_array3[0]), ptr_array3}, NULL, 4, 8);
-                break;
-            }
-            case 12: // rear plane mode toggle
-            {
-                ptr_array2[1] = stplane;
-                u8* vals0[] = 
-                {
-                    str_rearplane[0],
-                    str_rearplane[1],
-                };
-                u8** vals[] =
-                {
-                    vals0
-                };
-                menuEdit(&input3DDispCnt, 0, &var, 0, (struct MenuDat) {1, 2, 2, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, vals, 1, 14);
-                break;
-            }
-        }
-        disp3dcnt = var;
-    }
+    disp3dcnt = var;
 }
 
 void menuEditVars()
 {
-    u8* ptr_array[] =
+    struct MenuEntry entries[] =
+    {
+        {
+            .String = str_opt_3ddispcnt,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_edgecolor,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_alphatest,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_clearcolor,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_cleardepth,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_clearoffset,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_fogcolor,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_fogtable,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_toontable,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_initstate,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_cmdlist,
+            .Type = Entry_Button,
+        },
+    };
+
+    u8* headers[] =
     {
         str_menu_generic,
         str_menu_globalvars,
-        str_opt_3ddispcnt,
-        str_opt_edgecolor,
-        str_opt_alphatest,
-        str_opt_clearcolor,
-        str_opt_cleardepth,
-        str_opt_clearoffset,
-        str_opt_fogcolor,
-        str_opt_fogtable,
-        str_opt_toontable,
-        str_opt_initstate,
-        str_opt_cmdlist,
-        str_opt_reset,
-        str_hint_rscreenshot,
-        str_hint_bback,
-        str_hint_asel,
+        NULL,
     };
-    
+
     s32 cursor = 0;
     while (true)
     {
-        u32 sel = menuInputs(&cursor, 0, (struct InputIDs) {12, 0, 13}, (struct MenuDat) {2, 2, 1, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array});
+        u32 sel = menuInputs((struct MenuDat){&cursor, headers, entries, sizeof(entries)/sizeof(entries[0]),
+            (struct InputIDs){.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Exit = KEY_B, .Reload = KEY_Y, .Reset = KEY_X}});
 
         switch (sel)
         {
@@ -438,13 +382,13 @@ void menuEditVars()
                 menu3DDispCnt();
                 break;
             case 1: // edge colors
-                menuEdgeColor();
+                //menuEdgeColor();
                 break;
             case 2: // alpha test ref
-                menuAlphaTest();
+                //menuAlphaTest();
                 break;
             case 3: // clear color
-                menuClearColor();
+                //menuClearColor();
                 break;
             case 4: // clear depth
                 break;
@@ -460,13 +404,8 @@ void menuEditVars()
                 break;
             case 10: // 3d gfx commands
                 break;
-            case 11: // reset changes
-                break;
-            case 12: // exit
+            case RetExit: // exit
                 return;
-            case 13: // screenshot
-                menuScreenshot();
-                break;
         }
     }
 }

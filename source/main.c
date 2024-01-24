@@ -108,15 +108,12 @@ const u8 paramcount[256] =
 
 void waitForInput()
 {
-    scanKeys();
-    u16 prevkeys = keysHeld();
     while(true)
     {
         scanKeys();
-        u16 keys = keysHeld();
-        if ((keys & KEY_START && !(prevkeys & KEY_START)) || (keys & KEY_A && !(prevkeys & KEY_A)) || (keys & KEY_B && !(prevkeys & KEY_B)))
+        u16 keys = keysDown();
+        if (keys & KEY_START || keys & KEY_A || keys & KEY_B)
             return;
-        prevkeys = keys;
         swiWaitForVBlank();
     }
 }
@@ -489,29 +486,33 @@ bool loadFile(FILE* file)
 
 void menuMain(FILE** file)
 {
-    u8* ptr_array[] =
+    u8* headers[] =
     {
         str_menu_generic,
-        str_opt_changefile,
-        str_opt_rerender,
-        str_opt_edit,
-        str_opt_quit,
-        str_hint_rscreenshot,
-        str_hint_asel,
+        NULL,
+    };
+
+    struct MenuEntry entries[] =
+    {
+        {
+            .String = str_opt_changefile,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_edit,
+            .Type = Entry_Button,
+        },
     };
 
     s32 cursor = 0;
     while (true)
     {
-        u32 selection = menuInputs(&cursor, 2, (struct InputIDs) {0,0,1}, (struct MenuDat) {1, 1, 1, (sizeof(ptr_array) / sizeof(ptr_array[0])), ptr_array});
+        u32 selection = menuInputs((struct MenuDat) {&cursor, headers, entries, sizeof(entries)/sizeof(entries[0]),
+            (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Screenshot = KEY_X, .Reload = KEY_Y}});
+
         switch(selection)
         {
-            case 1: // R button - screenshot
-                // todo: allow for disabling screenshot button if they aren't possible
-                menuScreenshot();
-                break;
-
-            case 2: // change file
+            case 0: // change file
             {
                 bool unloaded = false;
                 while(true)
@@ -520,7 +521,7 @@ void menuMain(FILE** file)
                     while (newfile == NULL)
                     {
                         
-                        if (!menuDirSelect())
+                        if (!menuDirSelect(true))
                         {
                             fclose(newfile);
                             if (unloaded) loadFile(*file);
@@ -545,16 +546,12 @@ void menuMain(FILE** file)
                 }
                 break;
             }
-            case 3: // rerender
-                runDump(true);
-                break;
-
-            case 4: // edit menu
+            case 1: // edit menu
                 menuEditVars();
                 break;
-            
-            case 5: // quit
-                return;
+            case RetScreenshot: // screenshot
+                menuScreenshot();
+                break;
         }
         abort:
     }
@@ -566,6 +563,7 @@ int main()
 
     // init secondary 2d engine to a custom menu implementation
     menuInit();
+    keysSetRepeat(30, 6);
 
     // enable 3d gpu
     powerOn(POWER_3D_CORE | POWER_MATRIX);
@@ -580,7 +578,7 @@ int main()
     {
         while (file == NULL)
         {
-            if (!menuDirSelect()) return 0;
+            menuDirSelect(false);
             file = menuFileSelect();
         }
         menuClear();
