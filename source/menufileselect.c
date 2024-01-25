@@ -111,15 +111,16 @@ bool menuDirSelect(bool exit)
 
 FILE* menuFileSelect()
 {
-    struct MenuEntry entries[22] = {};
-    for (u32 i = 0; i < sizeof(entries)/sizeof(entries[0]); i++)
+    struct MenuEntry* entries = calloc(16, sizeof(struct MenuEntry));
+    u8** filename_ptrs = malloc(sizeof(u8**) * 16);
+
+    for (u32 i = 0; i < 16; i++)
         entries[i].Type = Entry_Button;
 
-    u8* filename_ptrs[sizeof(entries)/sizeof(entries[0])];
     DIR* dir = opendir(".");
-
+    u8 arraysize = 16;
     u8 counter = 0;
-    for (int i = 0; counter < 22 && i < 256; i++)
+    for (int i = 0; i < 256; i++)
     {
         char png[] = ".png";
         char ndsfd[] = ".ndsfd";
@@ -137,6 +138,17 @@ FILE* menuFileSelect()
             memcpy(entries[counter].String, dat->d_name, 31);
             strcat(entries[counter].String, "\n"); // also ensures the string ends with a null character
             counter++;
+            if (counter >= arraysize)
+            {
+                arraysize += 16;
+
+                entries = realloc(entries, sizeof(struct MenuEntry) * arraysize);
+                filename_ptrs = realloc(filename_ptrs, sizeof(u8**) * arraysize);
+
+                memset(&entries[arraysize-16], 0, sizeof(struct MenuEntry) * 16);
+                for (u32 i = arraysize - 16; i < arraysize; i++)
+                    entries[i].Type = Entry_Button;
+            }
         }
     }
 
@@ -146,6 +158,8 @@ FILE* menuFileSelect()
     {
         menuWriteSingle(str_err_file);
         waitForInput();
+        free(entries);
+        free(filename_ptrs);
         return NULL;
     }
     
@@ -166,6 +180,8 @@ FILE* menuFileSelect()
             free(filename_ptrs[i]);
             free(entries[i].String);
         }
+        free(entries);
+        free(filename_ptrs);
         return NULL;
     }
 
@@ -182,6 +198,8 @@ FILE* menuFileSelect()
         free(filename_ptrs[i]);
         free(entries[i].String);
     }
+    free(entries);
+    free(filename_ptrs);
 
     return file;
 }

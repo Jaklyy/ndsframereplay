@@ -136,62 +136,6 @@ void menuRender(struct MenuDat m)
     #define ENTRY   m.Entry[i]
 
     menuClear();
-    // menu headers
-    for (int i = 0; m.Headers[i] != NULL; i++)
-    {
-        menuWrite(m.Headers[i], PalHeader);
-    }
-
-    // menu entries
-    for (int i = 0; i < m.NumEntries; i++)
-    {
-        if (i == *m.Cursor) mapWrite(caret, 0);
-        else mapWrite(0, 0);
-
-        if (ENTRY.Type == Entry_Color)
-        {
-            u8 string[31] = "";
-            u8 sub = ENTRY.SubType;
-            u8 palette = 0;
-            u16 color = (*ENTRY.Var >> ENTRY.Shift) & ENTRY.Mask;
-            if (ENTRY.Mask > 31) color >>= 1; // assumes 6 bit color is the max
-            switch (sub)
-            {
-                case Sub_Red:
-                    palette = '\xF2';
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~0x1F) | color;
-                    break;
-                case Sub_Green:
-                    palette = '\xF3';
-                    color <<= 5;
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<5)) | color;
-                    break;
-                case Sub_Blue:
-                    palette = '\xF4';
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<10)) | color;
-                    color <<= 10;
-                    break;
-                case Sub_Alpha:
-                    palette = '\xF5';
-                    color = color | color << 5 | color << 10;
-                    break;
-            }
-            BG_PALETTE_SUB[(PALETTE_SIZE*15) + 2 + sub] = color;
-            
-            sprintf(string, "%s \xFF%c\xF0 %i", ENTRY.String, palette, color);
-            menuWrite(string, PalNormal);
-        }
-        else if (ENTRY.Type == Entry_Int)
-        {
-            u8 string[31] = "";
-            if (ENTRY.Values == NULL || ENTRY.Values[ENTRY.VarFrag] == NULL)
-                sprintf(string, "%s %li\n", ENTRY.String, ENTRY.VarFrag);
-            else sprintf(string, "%s %s\n", ENTRY.String, ENTRY.Values[ENTRY.VarFrag]);
-            menuWrite(string, PalNormal);
-        }
-        else menuWrite(ENTRY.String, PalNormal);
-    }
-
     // add menu footers
     int i = 0;
     u8 string[32] = "";
@@ -269,6 +213,94 @@ void menuRender(struct MenuDat m)
         j++;
     }
 
+    // menu headers
+    menucursor = 0;
+    int k = 0;
+    for (; m.Headers[k] != NULL; k++)
+    {
+        menuWrite(m.Headers[k], PalHeader);
+    }
+    
+    // menu entries
+    int numfooters = (i > j) ? i : j;
+    int menustart;
+    int menuend;
+    int menusize = MAP_HEIGHT - numfooters - k;
+    int bothalf = menusize >> 1;
+    int tophalf = (bothalf * 2 + numfooters + k == MAP_HEIGHT) ? bothalf : (bothalf+1);
+    if (m.NumEntries > menusize)
+    {
+        if (*m.Cursor <= bothalf)
+        {
+            menustart = 0;
+            menuend = menusize;
+        }
+        else if (*m.Cursor >= (m.NumEntries - tophalf))
+        {
+            menustart = m.NumEntries - menusize;
+            menuend = m.NumEntries;
+        }
+        else
+        {
+            menustart = *m.Cursor - bothalf;
+            menuend = *m.Cursor + tophalf;
+        }
+    }
+    else
+    {
+        menustart = 0;
+        menuend = m.NumEntries;
+    }
+
+    for (int i = menustart; i < menuend; i++)
+    {
+        if (i == *m.Cursor) mapWrite(caret, 0);
+        else mapWrite(0, 0);
+
+        if (ENTRY.Type == Entry_Color)
+        {
+            u8 string[31] = "";
+            u8 sub = ENTRY.SubType;
+            u8 palette = 0;
+            u16 color = (*ENTRY.Var >> ENTRY.Shift) & ENTRY.Mask;
+            if (ENTRY.Mask > 31) color >>= 1; // assumes 6 bit color is the max
+            switch (sub)
+            {
+                case Sub_Red:
+                    palette = '\xF2';
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~0x1F) | color;
+                    break;
+                case Sub_Green:
+                    palette = '\xF3';
+                    color <<= 5;
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<5)) | color;
+                    break;
+                case Sub_Blue:
+                    palette = '\xF4';
+                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<10)) | color;
+                    color <<= 10;
+                    break;
+                case Sub_Alpha:
+                    palette = '\xF5';
+                    color = color | color << 5 | color << 10;
+                    break;
+            }
+            BG_PALETTE_SUB[(PALETTE_SIZE*15) + 2 + sub] = color;
+            
+            sprintf(string, "%s \xFF%c\xF0 %i", ENTRY.String, palette, color);
+            menuWrite(string, PalNormal);
+        }
+        else if (ENTRY.Type == Entry_Int)
+        {
+            u8 string[31] = "";
+            if (ENTRY.Values == NULL || ENTRY.Values[ENTRY.VarFrag] == NULL)
+                sprintf(string, "%s %li\n", ENTRY.String, ENTRY.VarFrag);
+            else sprintf(string, "%s %s\n", ENTRY.String, ENTRY.Values[ENTRY.VarFrag]);
+            menuWrite(string, PalNormal);
+        }
+        else menuWrite(ENTRY.String, PalNormal);
+    }
+
     #ifdef ENTRY
     #undef ENTRY
     #endif
@@ -282,7 +314,7 @@ u32 menuInputs(struct MenuDat m)
 
     // deconstruct variable
     for (int i = 0; i < m.NumEntries; i++)
-        ENTRY.VarFrag = (*ENTRY.Var >> ENTRY.Shift) & ENTRY.Mask;
+        m.Entry[i].VarFrag = (*m.Entry[i].Var >> m.Entry[i].Shift) & m.Entry[i].Mask;
 
     while (true)
     {
