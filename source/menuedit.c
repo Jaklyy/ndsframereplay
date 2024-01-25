@@ -87,8 +87,8 @@ void menuClearColor()
             .Mask = 0x3F,
         },
     };
-
-    //menuInputs(Str)
+    s32 cursor = 0;
+    menuInputs((struct MenuDat){&cursor, headers, entries, ARRSIZE(entries), InputsCommon});
 }
 
 void menuEdgeColor()
@@ -352,7 +352,7 @@ void menuEditGlobals()
                 menuEdgeColor();
                 break;
             case 3: // clear color
-                //menuClearColor();
+                menuClearColor();
                 break;
             case 4: // clear depth
                 break;

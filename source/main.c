@@ -495,17 +495,17 @@ void menuMain(FILE** file)
     struct MenuEntry entries[] =
     {
         {
-            .String = str_opt_changefile,
-            .Type = Entry_Button,
-        },
-        {
             .String = str_opt_edit,
             .Type = Entry_Button,
         },
         {
             .String = str_opt_screenshot,
             .Type = Entry_Button,
-        }
+        },
+        {
+            .String = str_opt_changefile,
+            .Type = Entry_Button,
+        },
     };
 
     s32 cursor = 0;
@@ -515,7 +515,13 @@ void menuMain(FILE** file)
 
         switch(sel)
         {
-            case 0: // change file
+            case 0: // edit menu
+                menuEditVars();
+                break;
+            case 1: // screenshot
+                menuScreenshot();
+                break;
+            case 2: // change file
             {
                 bool unloaded = false;
                 while(true)
@@ -549,12 +555,6 @@ void menuMain(FILE** file)
                 }
                 break;
             }
-            case 1: // edit menu
-                menuEditVars();
-                break;
-            case 2: // screenshot
-                menuScreenshot();
-                break;
         }
         abort:
     }

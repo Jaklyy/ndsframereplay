@@ -296,16 +296,20 @@ u32 menuInputs(struct MenuDat m)
             if (MENU_DOWN & keysrep)
             {
                 (*m.Cursor)++;
-                if (*m.Cursor > m.NumEntries-1) *m.Cursor = 0;
+                if (*m.Cursor > m.NumEntries-1 || *m.Cursor < 0) *m.Cursor = 0;
                 menudirty = true;
             }
             if (MENU_PAGEUP & keysrep)
             {
-                // todo
+                *m.Cursor -= 10;
+                if (*m.Cursor < 0) *m.Cursor = 0;
+                menudirty = true;
             }
             if (MENU_PAGEDOWN & keysrep)
             {
-                // todo
+                *m.Cursor += 10;
+                if (*m.Cursor > m.NumEntries-1 || *m.Cursor < 0) *m.Cursor = m.NumEntries-1;
+                menudirty = true;
             }
         }
         if ((ENTRY.Type == Entry_Button))
