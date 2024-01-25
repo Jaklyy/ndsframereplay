@@ -23,118 +23,97 @@ void input3DDispCnt(u32 var, __attribute__((unused)) u8 offset)
     GFX_CONTROL = var;
 }
 
-/*void menuClearColor()
+void menuClearColor()
 {
-    u8 st_r[12];
-    u8 st_g[12];
-    u8 st_b[12];
-    u8 st_fog[9];
-    u8 st_a[12];
-    u8 st_id[8];
-
-    u8 r = clearcolor & 0x1F;
-    u8 g = (clearcolor >> 5) & 0x1F;
-    u8 b = (clearcolor >> 10) & 0x1F;
-    bool fog = (clearcolor >> 15) & 0x1;
-    u8 a = (clearcolor >> 16) & 0x1F;
-    u8 id = (clearcolor >> 24) & 0x3F;
-
-    sprintf(st_r, "%s%i\n", str_opt_r, r);
-    sprintf(st_g, "%s%i\n", str_opt_g, g);
-    sprintf(st_b, "%s%i\n", str_opt_b, b);
-    sprintf(st_a, "%s%i\n", str_opt_a, a);
-    sprintf(st_fog, "%s%s", str_opt_fog, str_state[fog]);
-    sprintf(st_id, "%s%i\n", str_opt_id, id);
-
-    u8* ptr_array[] =
+    u8* headers[] = 
     {
         str_sub_clearcolor,
-        st_r,
-        st_g,
-        st_b,
-        st_fog,
-        st_a,
-        st_id,
-        str_hint_bback,
-        str_hint_leftsubt,
-        str_hint_lsubt10,
-        str_hint_selreload,
-        str_hint_rightadd,
-        str_hint_radd10,
+        NULL,
     };
 
-    u8* vals[] =
+    struct MenuEntry entries[] =
     {
-        str_state[0],
-        str_state[1],
+        {
+            .Addr = inputClearColor,
+            .String = str_opt_r,
+            .Type = Entry_Var,
+            .SubType = Sub_Red,
+            .Var = &clearcolor,
+            .Shift = 0,
+            .Mask = 0x1F,
+        },
+        {
+            .Addr = inputClearColor,
+            .String = str_opt_g,
+            .Type = Entry_Var,
+            .SubType = Sub_Green,
+            .Var = &clearcolor,
+            .Shift = 5,
+            .Mask = 0x1F,
+        },
+        {
+            .Addr = inputClearColor,
+            .String = str_opt_b,
+            .Type = Entry_Var,
+            .SubType = Sub_Blue,
+            .Var = &clearcolor,
+            .Shift = 10,
+            .Mask = 0x1F,
+        },
+        {
+            .Addr = inputClearColor,
+            .String = str_opt_fog,
+            .Values = str_state,
+            .Type = Entry_Var,
+            .Var = &clearcolor,
+            .Shift = 15,
+            .Mask = 0x1,
+        },
+        {
+            .Addr = inputClearColor,
+            .String = str_opt_a,
+            .Type = Entry_Var,
+            .SubType = Sub_Alpha,
+            .Var = &clearcolor,
+            .Shift = 16,
+            .Mask = 0x1F,
+        },
+        {
+            .Addr = inputClearColor,
+            .String = str_opt_id,
+            .Type = Entry_Var,
+            .Var = &clearcolor,
+            .Shift = 24,
+            .Mask = 0x3F,
+        },
     };
 
-    u8** vals_array[] =
-    {
-        NULL,
-        NULL,
-        NULL,
-        vals,
-        NULL,
-        NULL,
-    };
-
-    menuEdit(&inputClearColor, 0, &clearcolor, 2, (struct MenuDat) {1, 3, 3, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array}, vals_array, 5, 0, 5, 5, 5, 10, 1, 15, 5, 16, 6, 24);
-}
-
-void menuAlphaTest()
-{
-    u32 var = alphatest;
-    u8 st_alpharef[15];
-    sprintf(st_alpharef, "ALPHA REF: %i", alphatest);
-    u8* ptr_array[] = 
-    {
-        str_sub_alpharef,
-        st_alpharef,
-        str_hint_bback,
-        str_hint_leftsubt,
-        str_hint_lsubt10,
-        str_hint_selreload,
-        str_hint_rightadd,
-        str_hint_radd10,
-    };
-
-    menuEdit(&inputAlphaRef, 0, &var, 0, (struct MenuDat) {1, 3, 3, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array}, NULL, 5, 0);
-    alphatest = var;
+    //menuInputs(Str)
 }
 
 void menuEdgeColor()
 {
-    u8* ptr_array[] =
+
+    u8* headers[] = 
     {
-    [0] = str_sub_edgecolor,
-    [9] = str_hint_bback,
-    [10] = str_hint_aedit,
-    [11] = str_hint_selreload,
+        str_sub_edgecolor,
+        NULL,
     };
-    for (int i = 0+1; i < 8+1; i++)
+    struct MenuEntry entries[8];
+    memset(entries, 0, sizeof(entries));
+
+    for (int i = 0; i < 8; i++)
     {
-        u8 color = 0xC0 | i;
-        ptr_array[i] = malloc(19);
-        sprintf(ptr_array[i], "\xF0""EDGE COLOR %i: \xFF%c\n", i, color);
+        u8 color = 0xC0 | (i+1);
+        entries[i].String = malloc(18);
+        entries[i].Type = Entry_Button;
+        sprintf(entries[i].String, "EDGE COLOR %i: \xFF%c\n", i, color);
     }
 
-    u8 st_r[12] = "";
-    u8 st_g[12] = "";
-    u8 st_b[12] = "";
-
-    u8* ptr_array2[] =
+    u8* headers2[] = 
     {
         str_sub_color,
-        st_r,
-        st_g,
-        st_b,
-        str_hint_bback,
-        str_hint_leftsubt,
-        str_hint_lsubt10,
-        str_hint_selreload,
-        str_hint_rightadd,
-        str_hint_radd10,
+        NULL,
     };
 
     s32 cursor = 0;
@@ -149,30 +128,55 @@ void menuEdgeColor()
         BG_PALETTE_SUB[(PALETTE_SIZE*15)+7] = edgecolor[6];
         BG_PALETTE_SUB[(PALETTE_SIZE*15)+8] = edgecolor[7];
 
-        u32 sel = menuInputs(&cursor, 3, (struct InputIDs) {1, 2, 0}, (struct MenuDat) {1, 1, 2, sizeof(ptr_array) / sizeof(ptr_array[0]), ptr_array});
+        u32 sel = menuInputs((struct MenuDat){&cursor, headers, entries, ARRSIZE(entries), InputsCommon});
 
-        if (sel == 1) goto exit;
-        else if (sel == 2) runDump(true); 
+        if (sel == Ret_Exit) break;
         else
         {
-            sel -= 3;
-            u8 r = (edgecolor[sel] & 0x1F);
-            u8 g = ((edgecolor[sel] >> 5) & 0x1F);
-            u8 b = ((edgecolor[sel] >> 10) & 0x1F);
-            sprintf(st_r, "%s%i\n", str_opt_r, r);
-            sprintf(st_g, "%s%i\n", str_opt_g, g);
-            sprintf(st_b, "%s%i\n", str_opt_b, b);
 
             u32 var = edgecolor[sel];
-            menuEdit(&inputEdgeColor, sel, &var, 1, (struct MenuDat) {1, 3, 3, sizeof(ptr_array2) / sizeof(ptr_array2[0]), ptr_array2}, NULL, 5, 0, 5, 5, 5, 10);
+            struct MenuEntry entries2[] =
+            {
+                {
+                    .Addr = inputEdgeColor,
+                    .AddrOffs = sel,
+                    .String = str_opt_r,
+                    .Type = Entry_Var,
+                    .SubType = Sub_Red,
+                    .Var = &var,
+                    .Shift = 0,
+                    .Mask = 0x1F,
+                },
+                {
+                    .Addr = inputEdgeColor,
+                    .AddrOffs = sel,
+                    .String = str_opt_g,
+                    .Type = Entry_Var,
+                    .SubType = Sub_Green,
+                    .Var = &var,
+                    .Shift = 5,
+                    .Mask = 0x1F,
+                },
+                {
+                    .Addr = inputEdgeColor,
+                    .AddrOffs = sel,
+                    .String = str_opt_b,
+                    .Type = Entry_Var,
+                    .SubType = Sub_Blue,
+                    .Var = &var,
+                    .Shift = 10,
+                    .Mask = 0x1F,
+                },
+            };
+            u32 cursor2 = 0;
+            menuInputs((struct MenuDat){&cursor2, headers2, entries2, ARRSIZE(entries2), InputsCommon});
             edgecolor[sel] = var;
         }
     }
 
-    exit:
-    for (int i = 0+1; i < 8+1; i++)
-        free(ptr_array[i]);
-}*/
+    for (int i = 0; i < 8; i++)
+        free(entries[i].String);
+}
 
 void menu3DDispCnt()
 {
@@ -190,7 +194,7 @@ void menu3DDispCnt()
             .String = str_3ddispcnt[0],
             .Values = str_state,
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 0,
             .Mask = 0x1,
         },
@@ -199,7 +203,7 @@ void menu3DDispCnt()
             .String = str_3ddispcnt[1],
             .Values = str_shading,
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 1,
             .Mask = 0x1,
         },
@@ -208,7 +212,7 @@ void menu3DDispCnt()
             .String = str_3ddispcnt[2],
             .Values = str_state,
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 2,
             .Mask = 0x1,
         },
@@ -217,7 +221,7 @@ void menu3DDispCnt()
             .String = str_3ddispcnt[3],
             .Values = str_state,
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 3,
             .Mask = 0x1,
         },
@@ -226,7 +230,7 @@ void menu3DDispCnt()
             .String = str_3ddispcnt[4],
             .Values = str_state,
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 4,
             .Mask = 0x1,
         },
@@ -235,7 +239,7 @@ void menu3DDispCnt()
             .String = str_3ddispcnt[5],
             .Values = str_state,
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 5,
             .Mask = 0x1,
         },
@@ -244,7 +248,7 @@ void menu3DDispCnt()
             .String = str_3ddispcnt[6],
             .Values = str_fogmode,
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 6,
             .Mask = 0x1,
         },
@@ -253,7 +257,7 @@ void menu3DDispCnt()
             .String = str_3ddispcnt[7],
             .Values = str_state,
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 7,
             .Mask = 0x1,
         },
@@ -261,7 +265,7 @@ void menu3DDispCnt()
             .Addr = &input3DDispCnt,
             .String = str_3ddispcnt[8],
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 8,
             .Mask = 0xF,
         },
@@ -270,21 +274,21 @@ void menu3DDispCnt()
             .String = str_3ddispcnt[9],
             .Values = str_rearplane,
             .Var = &var,
-            .Type = Entry_Int,
+            .Type = Entry_Var,
             .Shift = 14,
             .Mask = 0x1,
         },
     };
 
     s32 cursor = 0;
-    menuInputs((struct MenuDat){&cursor, headers, entries, sizeof(entries)/sizeof(entries[0]),
-        (struct InputIDs){.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Exit = KEY_B, .Add1 = KEY_RIGHT, .Sub1 = KEY_LEFT, .Add10 = KEY_R, .Sub10 = KEY_L, .Reload = KEY_Y, .Reset = KEY_X}});
+    menuInputs((struct MenuDat){&cursor, headers, entries, ARRSIZE(entries), InputsCommon});
 
     disp3dcnt = var;
 }
 
-void menuEditVars()
+void menuEditGlobals()
 {
+    u32 varat = alphatest;
     struct MenuEntry entries[] =
     {
         {
@@ -296,8 +300,11 @@ void menuEditVars()
             .Type = Entry_Button,
         },
         {
+            .Addr = inputAlphaRef,
             .String = str_opt_alphatest,
-            .Type = Entry_Button,
+            .Var = &varat,
+            .Type = Entry_Var,
+            .Mask = 0x1F,
         },
         {
             .String = str_opt_clearcolor,
@@ -323,19 +330,10 @@ void menuEditVars()
             .String = str_opt_toontable,
             .Type = Entry_Button,
         },
-        {
-            .String = str_opt_initstate,
-            .Type = Entry_Button,
-        },
-        {
-            .String = str_opt_cmdlist,
-            .Type = Entry_Button,
-        },
     };
 
     u8* headers[] =
     {
-        str_menu_generic,
         str_menu_globalvars,
         NULL,
     };
@@ -343,8 +341,7 @@ void menuEditVars()
     s32 cursor = 0;
     while (true)
     {
-        u32 sel = menuInputs((struct MenuDat){&cursor, headers, entries, sizeof(entries)/sizeof(entries[0]),
-            (struct InputIDs){.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Exit = KEY_B, .Reload = KEY_Y, .Reset = KEY_X}});
+        u32 sel = menuInputs((struct MenuDat){&cursor, headers, entries, ARRSIZE(entries), InputsCommon});
 
         switch (sel)
         {
@@ -352,10 +349,7 @@ void menuEditVars()
                 menu3DDispCnt();
                 break;
             case 1: // edge colors
-                //menuEdgeColor();
-                break;
-            case 2: // alpha test ref
-                //menuAlphaTest();
+                menuEdgeColor();
                 break;
             case 3: // clear color
                 //menuClearColor();
@@ -370,11 +364,52 @@ void menuEditVars()
                 break;
             case 8: // toon table
                 break;
-            case 9: // initial state vars
+            case Ret_Exit: // exit
+                alphatest = varat;
+                return;
+        }
+    }
+}
+
+void menuEditVars()
+{
+    struct MenuEntry entries[] =
+    {
+        {
+            .String = str_opt_globalvars,
+            .Type = Entry_Button
+        },
+        {
+            .String = str_opt_initstate,
+            .Type = Entry_Button,
+        },
+        {
+            .String = str_opt_cmdlist,
+            .Type = Entry_Button,
+        },
+    };
+
+    u8* headers[] =
+    {
+        str_menu_generic,
+        NULL,
+    };
+
+    s32 cursor = 0;
+    while (true)
+    {
+        u32 sel = menuInputs((struct MenuDat){&cursor, headers, entries, ARRSIZE(entries), InputsCommon});
+
+        switch (sel)
+        {
+            case 0: // global vars
+                menuEditGlobals();
                 break;
-            case 10: // 3d gfx commands
+            case 1: // initial state vars
                 break;
-            case RetExit: // exit
+            case 2: // 3d gfx commands
+                break;
+            case Ret_Exit: // exit
                 return;
         }
     }

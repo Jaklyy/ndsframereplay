@@ -6,6 +6,8 @@
 
 s16 menucursor = 0;
 
+struct MenuInputs InputsCommon = {0, 0, 0};
+
 void mapWrite(u8 tile, u8 palette)
 {
     BG_GFX_SUB[MAP_OFFSET + menucursor++] = (palette << 12) | tile;
@@ -36,7 +38,7 @@ void menuWrite(u8* text, u8 palette)
 void menuWriteSingle(u8* text)
 {
     menuClear();
-    menuWrite(text, PalNormal);
+    menuWrite(text, Pal_Normal);
 }
 
 void mapWriteRev(u8 tile, u8 palette)
@@ -96,120 +98,72 @@ void menuInit()
     BG_PALETTE_SUB[(PALETTE_SIZE*2)+1] = 0x3FF; // yellow
 }
 
-u8 lookupKey(u16 input)
-{
-    switch (input)
-    {
-        case 0:
-            return 12;
-        case KEY_A:
-            return 0;
-        case KEY_B:
-            return 1;
-        case KEY_SELECT:
-            return 2;
-        case KEY_START:
-            return 3;
-        case KEY_RIGHT:
-            return 4;
-        case KEY_LEFT:
-            return 5;
-        case KEY_UP:
-            return 6;
-        case KEY_DOWN:
-            return 7;
-        case KEY_R:
-            return 8;
-        case KEY_L:
-            return 9;
-        case KEY_X:
-            return 10;
-        case KEY_Y:
-            return 11;
-        default:
-            return 12;
-    }
-}
-
 void menuRender(struct MenuDat m)
 {
     #define ENTRY   m.Entry[i]
-
     menuClear();
     // add menu footers
     int i = 0;
     u8 string[32] = "";
-    u8 input = lookupKey(m.Inputs.Exit);
-    if (input < 12)
+    if (!m.Inputs.DisableExit)
     {
-        sprintf(string, "%s: %s", str_inputs[input], str_hint_back);
+        sprintf(string, "%s: %s", str_input_b, str_hint_back);
 
         menucursor = MAP_AREA - (MAP_WIDTH * (i+1));
-        menuWrite(string, PalHeader);
+        menuWrite(string, Pal_Header);
         i++;
     }
-    input = lookupKey(m.Inputs.Reload);
-    if (input < 12)
+    if (!m.Inputs.DisableReload)
     {
-        sprintf(string, "%s: %s", str_inputs[input], str_hint_reload);
+        sprintf(string, "%s: %s", str_input_select, str_hint_reload);
 
         menucursor = MAP_AREA - (MAP_WIDTH * (i+1));
-        menuWrite(string, PalHeader);
+        menuWrite(string, Pal_Header);
         i++;
     }
-    input = lookupKey(m.Inputs.Sub10);
-    if (input < 12)
+    if (m.Entry[*m.Cursor].Type == Entry_Var)
     {
-        sprintf(string, "%s: %s", str_inputs[input], str_hint_subt10);
+        sprintf(string, "%s: %s", str_input_l, str_hint_subt10);
 
         menucursor = MAP_AREA - (MAP_WIDTH * (i+1));
-        menuWrite(string, PalHeader);
+        menuWrite(string, Pal_Header);
         i++;
-    }
-    input = lookupKey(m.Inputs.Sub1);
-    if (input < 12)
-    {
-        sprintf(string, "%s: %s", str_inputs[input], str_hint_subt);
+
+        sprintf(string, "%s: %s", str_input_y, str_hint_subt);
 
         menucursor = MAP_AREA - (MAP_WIDTH * (i+1));
-        menuWrite(string, PalHeader);
+        menuWrite(string, Pal_Header);
         i++;
     }
 
     int j = 0;
-    input = lookupKey(m.Inputs.Select);
-    if (input < 12)
+    if (m.Entry[*m.Cursor].Type == Entry_Button)
     {
-        sprintf(string, "%s: %s", str_inputs[input], str_hint_sel);
+        sprintf(string, "%s: %s", str_input_a, str_hint_sel);
 
         menucursor = MAP_AREA - (MAP_WIDTH * j + 1);
-        menuWriteRev(string, PalHeader);
+        menuWriteRev(string, Pal_Header);
         j++;
     }
-    input = lookupKey(m.Inputs.Screenshot);
-    if (input < 12)
+    if (!m.Inputs.DisableReset)
     {
-        sprintf(string, "%s: %s", str_inputs[input], str_hint_screenshot);
+        sprintf(string, "%s: %s", str_input_start, str_hint_reset);
         menucursor = MAP_AREA - (MAP_WIDTH * j + 1);
-        menuWriteRev(string, PalHeader);
+        menuWriteRev(string, Pal_Header);
         j++;
     }
-    input = lookupKey(m.Inputs.Add10);
-    if (input < 12)
+    if (m.Entry[*m.Cursor].Type == Entry_Var)
     {
-        sprintf(string, "%s: %s", str_inputs[input], str_hint_add10);
+        sprintf(string, "%s: %s", str_input_r, str_hint_add10);
 
         menucursor = MAP_AREA - (MAP_WIDTH * j + 1);
-        menuWriteRev(string, PalHeader);
+        menuWriteRev(string, Pal_Header);
         j++;
-    }
-    input = lookupKey(m.Inputs.Add1);
-    if (input < 12)
-    {
-        sprintf(string, "%s: %s", str_inputs[input], str_hint_add);
+
+        sprintf(string, "%s: %s", str_input_x, str_hint_add);
 
         menucursor = MAP_AREA - (MAP_WIDTH * j + 1);
-        menuWriteRev(string, PalHeader);
+        menuWriteRev(string, Pal_Header);
         j++;
     }
 
@@ -218,7 +172,7 @@ void menuRender(struct MenuDat m)
     int k = 0;
     for (; m.Headers[k] != NULL; k++)
     {
-        menuWrite(m.Headers[k], PalHeader);
+        menuWrite(m.Headers[k], Pal_Header);
     }
     
     // menu entries
@@ -257,48 +211,50 @@ void menuRender(struct MenuDat m)
         if (i == *m.Cursor) mapWrite(caret, 0);
         else mapWrite(0, 0);
 
-        if (ENTRY.Type == Entry_Color)
+        if (ENTRY.Type == Entry_Var)
         {
-            u8 string[31] = "";
-            u8 sub = ENTRY.SubType;
-            u8 palette = 0;
-            u16 color = (*ENTRY.Var >> ENTRY.Shift) & ENTRY.Mask;
-            if (ENTRY.Mask > 31) color >>= 1; // assumes 6 bit color is the max
-            switch (sub)
+            if (ENTRY.SubType != Sub_Normal)
             {
-                case Sub_Red:
-                    palette = '\xF2';
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~0x1F) | color;
-                    break;
-                case Sub_Green:
-                    palette = '\xF3';
-                    color <<= 5;
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<5)) | color;
-                    break;
-                case Sub_Blue:
-                    palette = '\xF4';
-                    BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<10)) | color;
-                    color <<= 10;
-                    break;
-                case Sub_Alpha:
-                    palette = '\xF5';
-                    color = color | color << 5 | color << 10;
-                    break;
+                u8 string[31] = "";
+                u8 palette = 0;
+                u16 color = ENTRY.VarFrag;
+                if (ENTRY.Mask > 31) color >>= 1; // assumes 6 bit color is the max
+                switch (ENTRY.SubType)
+                {
+                    case Sub_Red:
+                        palette = '\xC2';
+                        BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~0x1F) | color;
+                        break;
+                    case Sub_Green:
+                        palette = '\xC3';
+                        color <<= 5;
+                        BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<5)) | color;
+                        break;
+                    case Sub_Blue:
+                        palette = '\xC4';
+                        color <<= 10;
+                        BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = (BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] & ~(0x1F<<10)) | color;
+                        break;
+                    case Sub_Alpha:
+                        palette = '\xC5';
+                        color = color | color << 5 | color << 10;
+                        break;
+                }
+                BG_PALETTE_SUB[(PALETTE_SIZE*15) + 1 + ENTRY.SubType] = color;
+                
+                sprintf(string, "%s \xFF%c\xF0 %li\n", ENTRY.String, palette, ENTRY.VarFrag);
+                menuWrite(string, Pal_Normal);
             }
-            BG_PALETTE_SUB[(PALETTE_SIZE*15) + 2 + sub] = color;
-            
-            sprintf(string, "%s \xFF%c\xF0 %i", ENTRY.String, palette, color);
-            menuWrite(string, PalNormal);
+            else if (ENTRY.Type == Entry_Var)
+            {
+                u8 string[31] = "";
+                if (ENTRY.Values == NULL || ENTRY.Values[ENTRY.VarFrag] == NULL)
+                    sprintf(string, "%s %li\n", ENTRY.String, ENTRY.VarFrag);
+                else sprintf(string, "%s %s\n", ENTRY.String, ENTRY.Values[ENTRY.VarFrag]);
+                menuWrite(string, Pal_Normal);
+            }
         }
-        else if (ENTRY.Type == Entry_Int)
-        {
-            u8 string[31] = "";
-            if (ENTRY.Values == NULL || ENTRY.Values[ENTRY.VarFrag] == NULL)
-                sprintf(string, "%s %li\n", ENTRY.String, ENTRY.VarFrag);
-            else sprintf(string, "%s %s\n", ENTRY.String, ENTRY.Values[ENTRY.VarFrag]);
-            menuWrite(string, PalNormal);
-        }
-        else menuWrite(ENTRY.String, PalNormal);
+        else menuWrite(ENTRY.String, Pal_Normal);
     }
 
     #ifdef ENTRY
@@ -331,37 +287,40 @@ u32 menuInputs(struct MenuDat m)
         
         if (m.NumEntries > 1)
         {
-            if (m.Inputs.ScrollUp & keysrep)
+            if (MENU_UP & keysrep)
             {
                 (*m.Cursor)--;
                 if (*m.Cursor < 0) *m.Cursor = m.NumEntries-1;
                 menudirty = true;
             }
-            if (m.Inputs.ScrollDown & keysrep)
+            if (MENU_DOWN & keysrep)
             {
                 (*m.Cursor)++;
                 if (*m.Cursor > m.NumEntries-1) *m.Cursor = 0;
                 menudirty = true;
             }
-            if (m.Inputs.PageUp & keysrep)
+            if (MENU_PAGEUP & keysrep)
             {
                 // todo
             }
-            if (m.Inputs.PageDown & keysrep)
+            if (MENU_PAGEDOWN & keysrep)
             {
                 // todo
             }
         }
-        if ((ENTRY.Type == Entry_Button) && (m.Inputs.Select & keys))
+        if ((ENTRY.Type == Entry_Button))
         {
-            if (ENTRY.SubType == 0) return *m.Cursor;
-            else return ENTRY.SubType;
+            if (MENU_SELECT & keys)
+            {
+                if (ENTRY.SubType == 0) return *m.Cursor;
+                else return ENTRY.SubType;
+            }
         }
-        if ((ENTRY.Type == Entry_Int || ENTRY.Type == Entry_Color))
+        else if (ENTRY.Type == Entry_Var)
         {
             // check if the variable should be edited
             bool update = false;
-            if (m.Inputs.Add1 & keysrep)
+            if (MENU_ADD1 & keysrep)
             {   
                 // increment variable
                 ENTRY.VarFrag++;
@@ -369,14 +328,14 @@ u32 menuInputs(struct MenuDat m)
 
                 update = true;
             }
-            if (m.Inputs.Sub1 & keysrep)
+            if (MENU_SUB1 & keysrep)
             {
                 ENTRY.VarFrag--;
                 ENTRY.VarFrag &= ENTRY.Mask;
 
                 update = true;
             }
-            if (m.Inputs.Add10 & keysrep)
+            if (MENU_ADD10 & keysrep)
             {
                 if (ENTRY.VarFrag != ENTRY.Mask)
                 {
@@ -387,7 +346,7 @@ u32 menuInputs(struct MenuDat m)
 
                 update = true;
             }
-            if (m.Inputs.Sub10 & keysrep)
+            if (MENU_SUB10 & keysrep)
             {
                 if (ENTRY.VarFrag != 0)
                 {
@@ -410,17 +369,17 @@ u32 menuInputs(struct MenuDat m)
                 menudirty = true;
             }
         }
-        if (m.Inputs.Reload & keys)
+        if (!m.Inputs.DisableReload && MENU_RELOAD & keys)
         {
             runDump(true);
         }
-        if (m.Inputs.Screenshot & keys)
+        if (!m.Inputs.DisableReset && MENU_RESET & keys)
         {
-            return RetScreenshot;
+
         }
-        if (m.Inputs.Exit & keys)
+        if (!m.Inputs.DisableExit && MENU_BACK & keys)
         {
-            return RetExit;
+            return Ret_Exit;
         }
     }
     #ifdef ENTRY

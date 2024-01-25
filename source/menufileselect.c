@@ -76,10 +76,9 @@ bool menuDirSelect(bool exit)
     }
 
     s32 cursor = 0;
-    u32 selection = menuInputs((struct MenuDat) {&cursor, headers, entries, i,
-        (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Exit = (exit ? KEY_B : 0)}});
+    u32 sel = menuInputs((struct MenuDat) {&cursor, headers, entries, i, (struct MenuInputs) {true, true, !exit}});
 
-    switch (selection)
+    switch (sel)
     {
         case 1:
             closedir(nitrodir);
@@ -99,7 +98,7 @@ bool menuDirSelect(bool exit)
             closedir(sddir);
             chdir((usingfolderfat ? "fat:/framedumps" : "fat:/"));
             return true;
-        case RetExit:
+        case Ret_Exit:
             closedir(nitrodir);
             closedir(fatdir);
             closedir(sddir);
@@ -170,10 +169,9 @@ FILE* menuFileSelect()
     };
 
     s32 cursor = 0;
-    s32 selection = menuInputs((struct MenuDat) {&cursor, headers, entries, counter,
-        (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Exit = KEY_B}});
+    u32 sel = menuInputs((struct MenuDat) {&cursor, headers, entries, counter, (struct MenuInputs) {true, true, false}});
 
-    if (selection == RetExit)
+    if (sel == Ret_Exit)
     {
         for (int i = 0; i < counter; i++)
         {
@@ -185,7 +183,7 @@ FILE* menuFileSelect()
         return NULL;
     }
 
-    FILE* file = fopen(filename_ptrs[selection], "rb");
+    FILE* file = fopen(filename_ptrs[sel], "rb");
 
     if (file == NULL)
     {

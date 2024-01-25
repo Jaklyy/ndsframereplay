@@ -112,7 +112,7 @@ void waitForInput()
     {
         scanKeys();
         u16 keys = keysDown();
-        if (keys & KEY_START || keys & KEY_A || keys & KEY_B)
+        if (keys & MENU_PROGRESS)
             return;
         swiWaitForVBlank();
     }
@@ -511,10 +511,9 @@ void menuMain(FILE** file)
     s32 cursor = 0;
     while (true)
     {
-        u32 selection = menuInputs((struct MenuDat) {&cursor, headers, entries, sizeof(entries)/sizeof(entries[0]),
-            (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Reload = KEY_Y}});
+        u32 sel = menuInputs((struct MenuDat) {&cursor, headers, entries, ARRSIZE(entries), (struct MenuInputs) {0, 0, 1}});
 
-        switch(selection)
+        switch(sel)
         {
             case 0: // change file
             {
@@ -597,5 +596,4 @@ int main()
     if (dispcapbank != 0xFF) initDispCap();
 
     menuMain(&file);
-    exit(0);
 }

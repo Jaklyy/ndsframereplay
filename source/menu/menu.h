@@ -14,46 +14,41 @@
 #define MAP_AREA        (MAP_WIDTH * MAP_HEIGHT)
 #define PALETTE_SIZE    16
 
+#ifndef ARRSIZE
+#define ARRSIZE(array) (sizeof(array)/sizeof(array[0]))
+#endif
+
+#define MENU_UP         KEY_UP
+#define MENU_DOWN       KEY_DOWN
+#define MENU_PAGEUP     KEY_LEFT
+#define MENU_PAGEDOWN   KEY_RIGHT
+#define MENU_ADD1       KEY_X
+#define MENU_SUB1       KEY_Y
+#define MENU_ADD10      KEY_R
+#define MENU_SUB10      KEY_L
+#define MENU_SELECT     KEY_A
+#define MENU_BACK       KEY_B
+#define MENU_RELOAD     KEY_SELECT
+#define MENU_RESET      KEY_START
+#define MENU_PROGRESS   (KEY_A | KEY_B)
+
 enum Palettes
 {
-    PalNormal = 0,
-    PalError,
-    PalHeader,
+    Pal_Normal = 0,
+    Pal_Error,
+    Pal_Header,
 };
 
 enum CommonReturnVals
 {
-    RetExit = 255,
-    RetScreenshot = 254,
-};
-
-struct InputIDs
-{
-    u16 ScrollUp;
-    u16 ScrollDown;
-
-    u16 PageUp;
-    u16 PageDown;
-
-    u16 Select;
-    u16 Exit;
-
-    u16 Add1;
-    u16 Sub1;
-    u16 Add10;
-    u16 Sub10;
-
-    u16 Reload;
-    u16 Screenshot;
-    u16 Reset;
+    Ret_Exit = 0xFFFF,
 };
 
 enum EntryType
 {
     Entry_Dummy = 0,
     Entry_Button,
-    Entry_Int,
-    Entry_Color,
+    Entry_Var,
 };
 
 enum SubType
@@ -61,11 +56,20 @@ enum SubType
     // button; value returned when selected
     Sub_Cursor = 0, // use cursor position for return value
 
-    // color; what color the entry represents
-    Sub_Red = 0,
+    // entry int; what type the entry represents
+    Sub_Normal = 0,
+    // colors
+    Sub_Red,
     Sub_Green,
     Sub_Blue,
     Sub_Alpha,
+};
+
+struct MenuInputs
+{
+    bool DisableReload;
+    bool DisableReset;
+    bool DisableExit;
 };
 
 struct MenuEntry
@@ -88,8 +92,10 @@ struct MenuDat
     u8** Headers;
     struct MenuEntry* Entry;
     u16 NumEntries;
-    struct InputIDs Inputs;
+    struct MenuInputs Inputs;
 };
+
+extern struct MenuInputs InputsCommon;
 
 void menuWriteSingle(u8* text);
 void menuClear();

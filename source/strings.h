@@ -16,11 +16,8 @@ extern u8 str_menu_ss[];
 // edit menu sub sections
 extern u8 str_sub_3ddispcnt[];
 extern u8 str_sub_edgecolor[];
-extern u8 str_sub_gx[];
-extern u8 str_sub_editparam[];
-extern u8 str_sub_color[];
-extern u8 str_sub_alpharef[];
 extern u8 str_sub_clearcolor[];
+extern u8 str_sub_color[];
 
 // menu options
 // directory menu
@@ -35,6 +32,11 @@ extern u8 str_opt_screenshot[];
 extern u8 str_opt_quit[];
 
 // edit menu
+extern u8 str_opt_globalvars[];
+extern u8 str_opt_initstate[];
+extern u8 str_opt_cmdlist[];
+
+// global vars submenu
 extern u8 str_opt_3ddispcnt[];
 extern u8 str_opt_edgecolor[];
 extern u8 str_opt_alphatest[];
@@ -44,9 +46,6 @@ extern u8 str_opt_clearoffset[];
 extern u8 str_opt_fogcolor[];
 extern u8 str_opt_fogtable[];
 extern u8 str_opt_toontable[];
-extern u8 str_opt_initstate[];
-extern u8 str_opt_cmdlist[];
-extern u8 str_opt_reset[];
 
 extern u8 str_opt_r[];
 extern u8 str_opt_g[];
@@ -57,9 +56,7 @@ extern u8 str_opt_id[];
 
 // screenshotmenu 
 extern u8 str_opt_ss_full_bmp[];
-//extern u8 str_opt_ss_full_raw[];
 extern u8 str_opt_ss_norm_bmp[];
-//extern u8 str_opt_ss_norm_raw[];
 
 
 // menu footers
@@ -72,7 +69,7 @@ extern u8 str_hint_subt[];
 extern u8 str_hint_add[];
 extern u8 str_hint_add10[];
 extern u8 str_hint_subt10[];
-extern u8 str_hint_screenshot[];
+extern u8 str_hint_reset[];
 extern u8 str_hint_reload[];
 
 // menu errors
@@ -100,6 +97,19 @@ extern u8 str_cmds[256][10];
 extern u8 str_matrix[][8];
 
 extern u8* str_state[];
+
+extern u8 str_input_a[];
+extern u8 str_input_b[];
+extern u8 str_input_select[];
+extern u8 str_input_start[];
+extern u8 str_input_right[];
+extern u8 str_input_left[];
+extern u8 str_input_up[];
+extern u8 str_input_down[];
+extern u8 str_input_r[];
+extern u8 str_input_l[];
+extern u8 str_input_x[];
+extern u8 str_input_y[];
 
 extern u8* str_inputs[];
 

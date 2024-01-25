@@ -252,10 +252,9 @@ void menuScreenshot()
     };
 
     s32 cursor = 0;
-    u32 selection = menuInputs((struct MenuDat) {&cursor, headers, entries, sizeof(entries)/sizeof(entries[0]),
-        (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Exit = KEY_B}});
+    u32 sel = menuInputs((struct MenuDat) {&cursor, headers, entries, ARRSIZE(entries), InputsCommon});
 
-    switch(selection)
+    switch(sel)
     {
         case 0:
             doScreenshot(false, true);
@@ -263,7 +262,7 @@ void menuScreenshot()
         case 1:
             doScreenshot(true, true);
             break;
-        case RetExit:
+        case Ret_Exit:
             return;
     }
 }

@@ -7,6 +7,10 @@
 
 #define CUR_FD_REV 0
 
+#ifndef ARRSIZE
+#define ARRSIZE(array) (sizeof(array)/sizeof(array[0]))
+#endif
+
 enum Cmd_IDs
 {
     //Nop = 0, // not stored
