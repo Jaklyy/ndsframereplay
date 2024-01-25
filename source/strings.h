@@ -30,9 +30,8 @@ extern u8 str_opt_nitro[];
 
 // main menu
 extern u8 str_opt_edit[];
-extern u8 str_opt_rerender[];
 extern u8 str_opt_changefile[];
-extern u8 str_opt_swapbuffer[];
+extern u8 str_opt_screenshot[];
 extern u8 str_opt_quit[];
 
 // edit menu
@@ -64,17 +63,17 @@ extern u8 str_opt_ss_norm_bmp[];
 
 
 // menu footers
-extern u8 str_hint_asel[];
-extern u8 str_hint_aedit[];
-extern u8 str_hint_bback[];
-extern u8 str_hint_leftprev[];
-extern u8 str_hint_rightnext[];
-extern u8 str_hint_leftsubt[];
-extern u8 str_hint_rightadd[];
-extern u8 str_hint_radd10[];
-extern u8 str_hint_lsubt10[];
-extern u8 str_hint_rscreenshot[];
-extern u8 str_hint_selreload[];
+extern u8 str_hint_sel[];
+extern u8 str_hint_edit[];
+extern u8 str_hint_back[];
+extern u8 str_hint_prev[];
+extern u8 str_hint_next[];
+extern u8 str_hint_subt[];
+extern u8 str_hint_add[];
+extern u8 str_hint_add10[];
+extern u8 str_hint_subt10[];
+extern u8 str_hint_screenshot[];
+extern u8 str_hint_reload[];
 
 // menu errors
 extern u8 str_err_dir[];
@@ -102,7 +101,7 @@ extern u8 str_matrix[][8];
 
 extern u8* str_state[];
 
-extern u8 str_inputs[][4];
+extern u8* str_inputs[];
 
 extern u8 str_3ddispcnt[][11];
 

@@ -29,8 +29,8 @@ u8 str_opt_nitro[] =        "ROMFS\n";
 
 // main menu
 u8 str_opt_edit[] =         "VIEW OR EDIT COMMANDS\n";
-u8 str_opt_rerender[] =     "FORCE RERENDER\n";
 u8 str_opt_changefile[] =   "CHANGE FILE\n";
+u8 str_opt_screenshot[] =   "SCREENSHOT\n";
 u8 str_opt_quit[] =         "VIBE CHECK\n";
 
 // edit menu
@@ -56,23 +56,21 @@ u8 str_opt_id[] =           "ID:";
 
 // screenshotmenu 
 u8 str_opt_ss_full_bmp[] =  "666 18 BIT BMP (EXPERIMENTAL)\n";
-//u8 str_opt_ss_full_raw[] =  "666 18 BIT RAW (EXPERIMENTAL)\n";
 u8 str_opt_ss_norm_bmp[] =  "555 15 BIT BMP\n";
-//u8 str_opt_ss_norm_raw[] =  "555 15 BIT RAW\n";
 
 
 // menu footers
-u8 str_hint_sel[] =        ": SELECT\n";
-u8 str_hint_edit[] =       ": EDIT\n";
-u8 str_hint_back[] =       ": BACK\n";
-u8 str_hint_prev[] =    ": PREV\n";
-u8 str_hint_next[] =   ": NEXT\n";
-u8 str_hint_subt[] =    ": MINUS 1\n";
-u8 str_hint_add[] =    ": PLUS 1\n";
-u8 str_hint_add10[] =      ": PLUS 10\n";
-u8 str_hint_subt10[] =     ": MINUS 10\n";
-u8 str_hint_screenshot[] = ": SCREENSHOT\n";
-u8 str_hint_reload[] =   ": RELOAD\n";
+u8 str_hint_sel[] =         "SELECT\n";
+u8 str_hint_edit[] =        "EDIT\n";
+u8 str_hint_back[] =        "BACK\n";
+u8 str_hint_prev[] =        "PREV\n";
+u8 str_hint_next[] =        "NEXT\n";
+u8 str_hint_subt[] =        "MINUS 1\n";
+u8 str_hint_add[] =         "PLUS 1\n";
+u8 str_hint_add10[] =       "PLUS 10\n";
+u8 str_hint_subt10[] =      "MINUS 10\n";
+u8 str_hint_screenshot[] =  "SCREENSHOT\n";
+u8 str_hint_reload[] =      "RELOAD\n";
 
 // menu errors
 u8 str_err_dir[] =          "\xF1""ERROR: UNABLE TO OPEN DIRECTORY\nPLEASE TURN OFF THE SYSTEM\n";
@@ -141,11 +139,11 @@ u8 str_matrix[][8] =
 
 u8* str_state[] = 
 {
-    " OFF\n",
-    " ON\n",
+    "OFF\n",
+    "ON\n",
 };
 
-u8 str_inputs[][4] =
+u8* str_inputs[] =
 {
     "A",
     "B",
@@ -177,18 +175,18 @@ u8 str_3ddispcnt[][11] =
 
 u8* str_shading[] =
 {
-    " TOON\n",
-    " HIGHLIGHT\n",
+    "TOON\n",
+    "HIGHLIGHT\n",
 };
 
 u8* str_fogmode[] =
 {
-    " ALPHACOLOR\n",
-    " ALPHA ONLY\n",
+    "ALPHACOLOR\n",
+    "ALPHA ONLY\n",
 };
 
 u8* str_rearplane[] =
 {
-    " BLANK\n",
-    " BITMAP\n",
+    "BLANK\n",
+    "BITMAP\n",
 };

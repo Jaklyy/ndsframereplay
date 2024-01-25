@@ -176,36 +176,6 @@ void menuEdgeColor()
 
 void menu3DDispCnt()
 {
-    u8 sttextures[16] = "";
-    sprintf(sttextures, "%s%s", str_3ddispcnt[0], str_state[(disp3dcnt >> 0) & 0x1]);
-
-    u8 stshading[22] = "";
-    sprintf(stshading, "%s%s", str_3ddispcnt[1], str_shading[(disp3dcnt >> 1) & 0x1]);
-
-    u8 stalphatest[16] = "";
-    sprintf(stalphatest, "%s%s", str_3ddispcnt[2], str_state[(disp3dcnt >> 2) & 0x1]);
-
-    u8 stblend[16] = "";
-    sprintf(stblend, "%s%s", str_3ddispcnt[3], str_state[(disp3dcnt >> 3) & 0x1]);
-
-    u8 stalias[16] = "";
-    sprintf(stalias, "%s%s", str_3ddispcnt[4], str_state[(disp3dcnt >> 4) & 0x1]);
-
-    u8 stedge[16] = "";
-    sprintf(stedge, "%s%s", str_3ddispcnt[5], str_state[(disp3dcnt >> 5) & 0x1]);
-
-    u8 stfogmode[23] = "";
-    sprintf(stfogmode, "%s%s", str_3ddispcnt[6], str_fogmode[(disp3dcnt >> 6) & 0x1]);
-
-    u8 stfog[16] = "";
-    sprintf(stfog, "%s%s", str_3ddispcnt[7], str_state[(disp3dcnt >> 7) & 0x1]);
-
-    u8 stfogshift[16] = "";
-    sprintf(stfogshift, "%s %i\n", str_3ddispcnt[8], (disp3dcnt >> 8) & 0xF);
-
-    u8 stplane[19] = "";
-    sprintf(stplane, "%s%s", str_3ddispcnt[9], str_rearplane[(disp3dcnt >> 14) & 0x1]);
-
     u8* headers[] =
     {
         str_sub_3ddispcnt,
@@ -217,7 +187,7 @@ void menu3DDispCnt()
     {
         {
             .Addr = &input3DDispCnt,
-            .String = sttextures,
+            .String = str_3ddispcnt[0],
             .Values = str_state,
             .Var = &var,
             .Type = Entry_Int,
@@ -226,7 +196,7 @@ void menu3DDispCnt()
         },
         {
             .Addr = &input3DDispCnt,
-            .String = stshading,
+            .String = str_3ddispcnt[1],
             .Values = str_shading,
             .Var = &var,
             .Type = Entry_Int,
@@ -235,7 +205,7 @@ void menu3DDispCnt()
         },
         {
             .Addr = &input3DDispCnt,
-            .String = stalphatest,
+            .String = str_3ddispcnt[2],
             .Values = str_state,
             .Var = &var,
             .Type = Entry_Int,
@@ -244,7 +214,7 @@ void menu3DDispCnt()
         },
         {
             .Addr = &input3DDispCnt,
-            .String = stblend,
+            .String = str_3ddispcnt[3],
             .Values = str_state,
             .Var = &var,
             .Type = Entry_Int,
@@ -253,7 +223,7 @@ void menu3DDispCnt()
         },
         {
             .Addr = &input3DDispCnt,
-            .String = stalias,
+            .String = str_3ddispcnt[4],
             .Values = str_state,
             .Var = &var,
             .Type = Entry_Int,
@@ -262,7 +232,7 @@ void menu3DDispCnt()
         },
         {
             .Addr = &input3DDispCnt,
-            .String = stedge,
+            .String = str_3ddispcnt[5],
             .Values = str_state,
             .Var = &var,
             .Type = Entry_Int,
@@ -271,7 +241,7 @@ void menu3DDispCnt()
         },
         {
             .Addr = &input3DDispCnt,
-            .String = stfogmode,
+            .String = str_3ddispcnt[6],
             .Values = str_fogmode,
             .Var = &var,
             .Type = Entry_Int,
@@ -280,7 +250,7 @@ void menu3DDispCnt()
         },
         {
             .Addr = &input3DDispCnt,
-            .String = stfog,
+            .String = str_3ddispcnt[7],
             .Values = str_state,
             .Var = &var,
             .Type = Entry_Int,
@@ -289,7 +259,7 @@ void menu3DDispCnt()
         },
         {
             .Addr = &input3DDispCnt,
-            .String = stfogshift,
+            .String = str_3ddispcnt[8],
             .Var = &var,
             .Type = Entry_Int,
             .Shift = 8,
@@ -297,7 +267,7 @@ void menu3DDispCnt()
         },
         {
             .Addr = &input3DDispCnt,
-            .String = stplane,
+            .String = str_3ddispcnt[9],
             .Values = str_rearplane,
             .Var = &var,
             .Type = Entry_Int,

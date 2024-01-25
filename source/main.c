@@ -502,13 +502,17 @@ void menuMain(FILE** file)
             .String = str_opt_edit,
             .Type = Entry_Button,
         },
+        {
+            .String = str_opt_screenshot,
+            .Type = Entry_Button,
+        }
     };
 
     s32 cursor = 0;
     while (true)
     {
         u32 selection = menuInputs((struct MenuDat) {&cursor, headers, entries, sizeof(entries)/sizeof(entries[0]),
-            (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Screenshot = KEY_X, .Reload = KEY_Y}});
+            (struct InputIDs) {.ScrollUp = KEY_UP, .ScrollDown = KEY_DOWN, .Select = KEY_A, .Reload = KEY_Y}});
 
         switch(selection)
         {
@@ -549,7 +553,7 @@ void menuMain(FILE** file)
             case 1: // edit menu
                 menuEditVars();
                 break;
-            case RetScreenshot: // screenshot
+            case 2: // screenshot
                 menuScreenshot();
                 break;
         }

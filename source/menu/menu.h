@@ -14,6 +14,13 @@
 #define MAP_AREA        (MAP_WIDTH * MAP_HEIGHT)
 #define PALETTE_SIZE    16
 
+enum Palettes
+{
+    PalNormal = 0,
+    PalError,
+    PalHeader,
+};
+
 enum CommonReturnVals
 {
     RetExit = 255,
@@ -67,6 +74,7 @@ struct MenuEntry
     u8* String;
     u8** Values;
     u32* Var;
+    u32 VarFrag; // the part of the var that's actually incremented
     u16 SubType;
     u8 Type;
     u8 Shift;
@@ -83,14 +91,9 @@ struct MenuDat
     struct InputIDs Inputs;
 };
 
-void mapWrite(u8 tile, u8 palette);
-void menuWrite(u8* text);
 void menuWriteSingle(u8* text);
-void mapWriteRev(u8 tile, u8 palette);
-void menuWriteRev(u8* text);
 void menuClear();
 void menuInit();
-void menuRender(struct MenuDat m);
 u32 menuInputs(struct MenuDat m);
 //void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 mode, struct MenuDat mdat, u8*** values, ...);
 //u32 menuInputs(s32* cursor, u16 startID, struct InputIDs inputids, struct MenuDat mdat);

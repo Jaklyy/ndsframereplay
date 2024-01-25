@@ -1,6 +1,6 @@
 #include "menu.h"
 #include "font.h"
-
+#include "../strings.h"
 
 
 
@@ -11,9 +11,8 @@ void mapWrite(u8 tile, u8 palette)
     BG_GFX_SUB[MAP_OFFSET + menucursor++] = (palette << 12) | tile;
 }
 
-void menuWrite(u8* text)
+void menuWrite(u8* text, u8 palette)
 {
-    u8 palette = 0;
     for (u16 i = 0; text[i] != 0; i++)
     {
         switch (text[i])
@@ -37,7 +36,7 @@ void menuWrite(u8* text)
 void menuWriteSingle(u8* text)
 {
     menuClear();
-    menuWrite(text);
+    menuWrite(text, PalNormal);
 }
 
 void mapWriteRev(u8 tile, u8 palette)
@@ -45,15 +44,14 @@ void mapWriteRev(u8 tile, u8 palette)
     BG_GFX_SUB[MAP_OFFSET + menucursor--] = (palette << 12) | tile;
 }
 
-void menuWriteRev(u8* text)
+void menuWriteRev(u8* text, u8 palette)
 {
-    u8 palette = 0;
     u8 numchars = 0;
     for (u16 i = 0; text[i] != 0; i++)
         numchars++;
     numchars--;
 
-    for (u16 i = numchars; i > 0; i--)
+    for (s32 i = numchars; i >= 0; i--)
     {
         switch (text[i])
         {
@@ -98,26 +96,65 @@ void menuInit()
     BG_PALETTE_SUB[(PALETTE_SIZE*2)+1] = 0x3FF; // yellow
 }
 
+u8 lookupKey(u16 input)
+{
+    switch (input)
+    {
+        case 0:
+            return 12;
+        case KEY_A:
+            return 0;
+        case KEY_B:
+            return 1;
+        case KEY_SELECT:
+            return 2;
+        case KEY_START:
+            return 3;
+        case KEY_RIGHT:
+            return 4;
+        case KEY_LEFT:
+            return 5;
+        case KEY_UP:
+            return 6;
+        case KEY_DOWN:
+            return 7;
+        case KEY_R:
+            return 8;
+        case KEY_L:
+            return 9;
+        case KEY_X:
+            return 10;
+        case KEY_Y:
+            return 11;
+        default:
+            return 12;
+    }
+}
+
 void menuRender(struct MenuDat m)
 {
+    #define ENTRY   m.Entry[i]
+
     menuClear();
+    // menu headers
     for (int i = 0; m.Headers[i] != NULL; i++)
     {
-        menuWrite(m.Headers[i]);
+        menuWrite(m.Headers[i], PalHeader);
     }
 
+    // menu entries
     for (int i = 0; i < m.NumEntries; i++)
     {
         if (i == *m.Cursor) mapWrite(caret, 0);
         else mapWrite(0, 0);
 
-        if (m.Entry[i].Type == Entry_Color)
+        if (ENTRY.Type == Entry_Color)
         {
             u8 string[31] = "";
-            u8 sub = m.Entry[i].SubType;
+            u8 sub = ENTRY.SubType;
             u8 palette = 0;
-            u16 color = (*m.Entry[i].Var >> m.Entry[i].Shift) & m.Entry[i].Mask;
-            if (m.Entry[i].Mask > 31) color >>= 1; // assumes 6 bit color is the max
+            u16 color = (*ENTRY.Var >> ENTRY.Shift) & ENTRY.Mask;
+            if (ENTRY.Mask > 31) color >>= 1; // assumes 6 bit color is the max
             switch (sub)
             {
                 case Sub_Red:
@@ -141,21 +178,100 @@ void menuRender(struct MenuDat m)
             }
             BG_PALETTE_SUB[(PALETTE_SIZE*15) + 2 + sub] = color;
             
-            sprintf(string, "%s \xFF%c\xF0 %i", m.Entry[i].String, palette, color);
-            menuWrite(string);
+            sprintf(string, "%s \xFF%c\xF0 %i", ENTRY.String, palette, color);
+            menuWrite(string, PalNormal);
         }
-        else menuWrite(m.Entry[i].String);
+        else if (ENTRY.Type == Entry_Int)
+        {
+            u8 string[31] = "";
+            if (ENTRY.Values == NULL || ENTRY.Values[ENTRY.VarFrag] == NULL)
+                sprintf(string, "%s %li\n", ENTRY.String, ENTRY.VarFrag);
+            else sprintf(string, "%s %s\n", ENTRY.String, ENTRY.Values[ENTRY.VarFrag]);
+            menuWrite(string, PalNormal);
+        }
+        else menuWrite(ENTRY.String, PalNormal);
     }
 
-    /*int i = 0;
-    menucursor = MAP_AREA - (MAP_WIDTH * (mdat.footerL - i));
-    menuWrite(mdat.strings[j++]);
-
-    for (int i = 0; i < mdat.footerR; i++)
+    // add menu footers
+    int i = 0;
+    u8 string[32] = "";
+    u8 input = lookupKey(m.Inputs.Exit);
+    if (input < 12)
     {
-        menucursor = MAP_AREA - (MAP_WIDTH * (mdat.footerR - i - 1) + 1);
-        menuWriteRev(mdat.strings[j++]);
-    }*/
+        sprintf(string, "%s: %s", str_inputs[input], str_hint_back);
+
+        menucursor = MAP_AREA - (MAP_WIDTH * (i+1));
+        menuWrite(string, PalHeader);
+        i++;
+    }
+    input = lookupKey(m.Inputs.Reload);
+    if (input < 12)
+    {
+        sprintf(string, "%s: %s", str_inputs[input], str_hint_reload);
+
+        menucursor = MAP_AREA - (MAP_WIDTH * (i+1));
+        menuWrite(string, PalHeader);
+        i++;
+    }
+    input = lookupKey(m.Inputs.Sub10);
+    if (input < 12)
+    {
+        sprintf(string, "%s: %s", str_inputs[input], str_hint_subt10);
+
+        menucursor = MAP_AREA - (MAP_WIDTH * (i+1));
+        menuWrite(string, PalHeader);
+        i++;
+    }
+    input = lookupKey(m.Inputs.Sub1);
+    if (input < 12)
+    {
+        sprintf(string, "%s: %s", str_inputs[input], str_hint_subt);
+
+        menucursor = MAP_AREA - (MAP_WIDTH * (i+1));
+        menuWrite(string, PalHeader);
+        i++;
+    }
+
+    int j = 0;
+    input = lookupKey(m.Inputs.Select);
+    if (input < 12)
+    {
+        sprintf(string, "%s: %s", str_inputs[input], str_hint_sel);
+
+        menucursor = MAP_AREA - (MAP_WIDTH * j + 1);
+        menuWriteRev(string, PalHeader);
+        j++;
+    }
+    input = lookupKey(m.Inputs.Screenshot);
+    if (input < 12)
+    {
+        sprintf(string, "%s: %s", str_inputs[input], str_hint_screenshot);
+        menucursor = MAP_AREA - (MAP_WIDTH * j + 1);
+        menuWriteRev(string, PalHeader);
+        j++;
+    }
+    input = lookupKey(m.Inputs.Add10);
+    if (input < 12)
+    {
+        sprintf(string, "%s: %s", str_inputs[input], str_hint_add10);
+
+        menucursor = MAP_AREA - (MAP_WIDTH * j + 1);
+        menuWriteRev(string, PalHeader);
+        j++;
+    }
+    input = lookupKey(m.Inputs.Add1);
+    if (input < 12)
+    {
+        sprintf(string, "%s: %s", str_inputs[input], str_hint_add);
+
+        menucursor = MAP_AREA - (MAP_WIDTH * j + 1);
+        menuWriteRev(string, PalHeader);
+        j++;
+    }
+
+    #ifdef ENTRY
+    #undef ENTRY
+    #endif
 }
 
 u32 menuInputs(struct MenuDat m)
@@ -163,6 +279,10 @@ u32 menuInputs(struct MenuDat m)
     #define ENTRY   m.Entry[*m.Cursor]
 
     bool menudirty = true;
+
+    // deconstruct variable
+    for (int i = 0; i < m.NumEntries; i++)
+        ENTRY.VarFrag = (*ENTRY.Var >> ENTRY.Shift) & ENTRY.Mask;
 
     while (true)
     {
@@ -207,53 +327,54 @@ u32 menuInputs(struct MenuDat m)
         }
         if ((ENTRY.Type == Entry_Int || ENTRY.Type == Entry_Color))
         {
-            u32 var = (*ENTRY.Var >> ENTRY.Shift) & ENTRY.Mask;
+            // check if the variable should be edited
+            bool update = false;
             if (m.Inputs.Add1 & keysrep)
-            {
-                var++;
-                var &= ENTRY.Mask;
+            {   
+                // increment variable
+                ENTRY.VarFrag++;
+                ENTRY.VarFrag &= ENTRY.Mask;
 
-                *ENTRY.Var = (*ENTRY.Var & ~(ENTRY.Mask << ENTRY.Shift)) | var << ENTRY.Shift;
-
-                if (ENTRY.Addr != NULL) (*ENTRY.Addr)(*ENTRY.Var, ENTRY.AddrOffs);
-                menudirty = true;
+                update = true;
             }
             if (m.Inputs.Sub1 & keysrep)
             {
-                var--;
-                var &= ENTRY.Mask;
+                ENTRY.VarFrag--;
+                ENTRY.VarFrag &= ENTRY.Mask;
 
-                *ENTRY.Var = (*ENTRY.Var & ~(ENTRY.Mask << ENTRY.Shift)) | var << ENTRY.Shift;
-
-                if (ENTRY.Addr != NULL) (*ENTRY.Addr)(*ENTRY.Var, ENTRY.AddrOffs);
-                menudirty = true;
+                update = true;
             }
             if (m.Inputs.Add10 & keysrep)
             {
-                if (var != ENTRY.Mask)
+                if (ENTRY.VarFrag != ENTRY.Mask)
                 {
-                    var += 10;
-                    if (var > ENTRY.Mask) var = ENTRY.Mask;
+                    ENTRY.VarFrag += 10;
+                    if (ENTRY.VarFrag > ENTRY.Mask) ENTRY.VarFrag = ENTRY.Mask;
                 }
-                else var = 0;
+                else ENTRY.VarFrag = 0;
 
-                *ENTRY.Var = (*ENTRY.Var & ~(ENTRY.Mask << ENTRY.Shift)) | var << ENTRY.Shift;
-
-                if (ENTRY.Addr != NULL) (*ENTRY.Addr)(*ENTRY.Var, ENTRY.AddrOffs);
-                menudirty = true;
+                update = true;
             }
             if (m.Inputs.Sub10 & keysrep)
             {
-                if (var != 0)
+                if (ENTRY.VarFrag != 0)
                 {
-                    var -= 10;
-                    if (var > ENTRY.Mask) var = 0;
+                    ENTRY.VarFrag -= 10;
+                    if (ENTRY.VarFrag > ENTRY.Mask) ENTRY.VarFrag = 0;
                 }
-                else var = ENTRY.Mask;
+                else ENTRY.VarFrag = ENTRY.Mask;
 
-                *ENTRY.Var = (*ENTRY.Var & ~(ENTRY.Mask << ENTRY.Shift)) | var << ENTRY.Shift;
+                update = true;
+            }
+            // update vars if an update is queued
+            if (update)
+            {
+                // reconstruct variable to update
+                *ENTRY.Var = (*ENTRY.Var & ~(ENTRY.Mask << ENTRY.Shift)) | ENTRY.VarFrag << ENTRY.Shift;
 
+                // update associated register if provided
                 if (ENTRY.Addr != NULL) (*ENTRY.Addr)(*ENTRY.Var, ENTRY.AddrOffs);
+
                 menudirty = true;
             }
         }
@@ -274,242 +395,3 @@ u32 menuInputs(struct MenuDat m)
     #undef ENTRY
     #endif
 }
-
-/*void menuEdit(void (*addr)(u32, u8), u8 addroffs, u32* toedit, u8 mode, struct MenuDat mdat, u8*** values, ...)
-{
-    u16 numentries = mdat.numstr - mdat.header - mdat.footerL - mdat.footerR;
-    va_list args;
-    va_start(args, values);
-
-    u8 numbits[16];
-    u8 shift[16];
-    for (int i = 0; i < numentries; i++)
-    {
-        numbits[i] = va_arg(args, int);
-        shift[i] = va_arg(args, int);
-    }
-    va_end(args);
-
-    // set up a bit mask
-    u32 mask[16] = {};
-    for (int j = 0; j < numentries; j++)
-        for (int i = 0; i < numbits[j]; i++)
-        {
-            mask[j] <<= 1;
-            mask[j] |= 0x1;
-        }
-
-    u8* strend[16];
-    u32 variable[16];
-    
-    for (int i = 0; i < numentries; i++)
-    {
-        strend[i] = strrchr(mdat.strings[i+1], ' ');
-        variable[i] = ((*toedit >> shift[i]) >> (numbits[i] * i)) & mask[i];
-    }
-    
-    if (mode == 1 || mode == 2)
-    {
-        BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
-        BG_PALETTE_SUB[(PALETTE_SIZE*15)+2] = variable[0];
-        BG_PALETTE_SUB[(PALETTE_SIZE*15)+3] = variable[1] << 5;
-        BG_PALETTE_SUB[(PALETTE_SIZE*15)+4] = variable[2] << 10;
-        if (mode == 2)
-            BG_PALETTE_SUB[(PALETTE_SIZE*15)+5] = variable[4] | variable[4] << 5 | variable[4] << 10;
-    }
-
-    bool menudirty = true;
-    scanKeys();
-    u16 prevkeys = keysHeld();
-    s32 cursor = 0;
-    while (true)
-    {
-        swiWaitForVBlank();
-        if (menudirty)
-        {
-            menuRender((numentries <= 1 ? -1 : cursor), mdat);
-            menudirty = false;
-        }
-
-        scanKeys();
-        u16 keys = keysHeld();
-
-        if (keys & KEY_RIGHT && !(prevkeys & KEY_RIGHT))
-        {
-            variable[cursor] = (variable[cursor] + 1) & mask[cursor];
-
-            if (values == NULL || values[cursor] == NULL|| (values[cursor])[variable[cursor]] == NULL)
-                sprintf(strend[cursor], " %li\n", variable[cursor]);
-            else strcpy(strend[cursor], (values[cursor])[variable[cursor]]);
-
-            if (mode == 1)
-            {
-                BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
-                BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
-                
-                *toedit = variable[0] << shift[0] | variable[1] << shift[1] | variable[2] << shift[2];
-            }
-            else
-            {
-                *toedit &= ~(mask[cursor] << shift[cursor]);
-                *toedit |= (variable[cursor] << shift[cursor]);
-            }
-            if (addr != NULL) (*addr)(*toedit, addroffs);
-            menudirty = true;
-        }
-        else if (keys & KEY_LEFT && !(prevkeys & KEY_LEFT))
-        {
-            variable[cursor] = (variable[cursor] - 1) & mask[cursor];
-
-            if (values == NULL || values[cursor] == NULL|| (values[cursor])[variable[cursor]] == NULL)
-                sprintf(strend[cursor], " %li\n", variable[cursor]);
-            else strcpy(strend[cursor], (values[cursor])[variable[cursor]]);
-
-
-            if (mode == 1)
-            {
-                BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
-                BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
-                
-                *toedit = variable[0] << shift[0] | variable[1] << shift[1] | variable[2] << shift[2];
-            }
-            else
-            {
-                *toedit &= ~(mask[cursor] << shift[cursor]);
-                *toedit |= (variable[cursor] << shift[cursor]);
-            }
-            if (addr != NULL) (*addr)(*toedit, addroffs);
-            menudirty = true;
-        }
-        else if (keys & KEY_SELECT && !(prevkeys & KEY_SELECT))
-        {
-            runDump(true);
-        }
-        else if (keys & KEY_B && !(prevkeys & KEY_B))
-        {
-            return;
-        }
-        else if (keys & KEY_R && !(prevkeys & KEY_R))
-        {
-            if (variable[cursor] != mask[cursor])
-            {
-                variable[cursor] += 10;
-                if (variable[cursor] > mask[cursor]) variable[cursor] = mask[cursor];
-            }
-            else variable[cursor] = 0;
-        
-            if (values == NULL || values[cursor] == NULL|| (values[cursor])[variable[cursor]] == NULL)
-                sprintf(strend[cursor], " %li\n", variable[cursor]);
-            else strcpy(strend[cursor], (values[cursor])[variable[cursor]]);
-
-            if (mode == 1)
-            {
-                BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
-                BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
-
-                *toedit = variable[0] << shift[0] | variable[1] << shift[1] | variable[2] << shift[2];
-            }
-            else
-            {
-                *toedit &= ~(mask[cursor] << shift[cursor]);
-                *toedit |= (variable[cursor] << shift[cursor]);
-            }
-            if (addr != NULL) (*addr)(*toedit, addroffs);
-            menudirty = true;
-        }
-        else if (keys & KEY_L && !(prevkeys & KEY_L))
-        {
-            if (variable[cursor] != 0)
-            {
-                variable[cursor] -= 10;
-                if (variable[cursor] > mask[cursor]) variable[cursor] = 0;
-            }
-            else variable[cursor] = mask[cursor];
-
-            if (values == NULL || values[cursor] == NULL|| (values[cursor])[variable[cursor]] == NULL)
-                sprintf(strend[cursor], " %li\n", variable[cursor]);
-            else strcpy(strend[cursor], (values[cursor])[variable[cursor]]);
-
-            if (mode == 1)
-            {
-                BG_PALETTE_SUB[(PALETTE_SIZE*15)+1] = variable[0] | variable[1] << 5 | variable[2] << 10;
-                BG_PALETTE_SUB[(PALETTE_SIZE*15)+cursor+2] = variable[cursor] << (cursor * 5);
-
-                *toedit = variable[0] << shift[0] | variable[1] << shift[1] | variable[2] << shift[2];
-            }
-            else
-            {
-                *toedit &= ~(mask[cursor] << shift[cursor]);
-                *toedit |= (variable[cursor] << shift[cursor]);
-            }
-            if (addr != NULL) (*addr)(*toedit, addroffs);
-            menudirty = true;
-        }
-        else if (numentries > 1)
-        {
-            if (keys & KEY_UP && !(prevkeys & KEY_UP))
-            {
-                cursor -= 1;
-                if (cursor < 0) cursor = numentries-1;
-                menudirty = true;
-            }
-            else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
-            {
-                cursor += 1;
-                if (cursor > numentries-1) cursor = 0;
-                menudirty = true;
-            }
-        }
-
-        prevkeys = keys;
-    }
-}*/
-
-/*u32 menuInputs(s32* cursor, u16 startID, struct InputIDs inputids, struct MenuDat mdat)
-{
-    u16 numentries = mdat.numstr - mdat.header - mdat.footerL - mdat.footerR;
-    bool menudirty = true;
-    scanKeys();
-    u16 prevkeys = keysHeld();
-    while (true)
-    {   
-        swiWaitForVBlank();
-        if (menudirty)
-        {
-            menuRender(*cursor, mdat);
-            menudirty = false;
-        }
-
-        scanKeys();
-        u16 keys = keysHeld();
-        if (keys & KEY_A && !(prevkeys & KEY_A))
-        {
-            return *cursor + startID;
-        }
-        else if (inputids.B != 0 && keys & KEY_B && !(prevkeys & KEY_B))
-        {
-            return inputids.B;
-        }
-        else if (inputids.Select != 0 && keys & KEY_SELECT && !(prevkeys & KEY_SELECT))
-        {
-            return inputids.Select;
-        }
-        else if (inputids.R != 0 && keys & KEY_R && !(prevkeys & KEY_R))
-        {
-            return inputids.R;
-        }
-        else if (keys & KEY_UP && !(prevkeys & KEY_UP))
-        {
-            (*cursor)--;
-            if (*cursor < 0) *cursor = numentries-1;
-            menudirty = true;
-        }
-        else if (keys & KEY_DOWN && !(prevkeys & KEY_DOWN))
-        {
-            (*cursor)++;
-            if (*cursor > numentries-1) *cursor = 0;
-            menudirty = true;
-        }
-        prevkeys = keys;
-    }
-}*/
