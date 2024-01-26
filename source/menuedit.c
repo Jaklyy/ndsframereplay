@@ -47,6 +47,8 @@ void menuEditGX()
 
     s32 cursor = 0;
     menuInputs((struct MenuDat){&cursor, headers, entries, numcmds, InputsCommon});
+
+    free(entries);
 }
 
 void menuClearColor()
