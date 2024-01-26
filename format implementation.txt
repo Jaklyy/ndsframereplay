@@ -1,0 +1,81 @@
+Frame Dump File Structure:
+    Note 1: Data can optionally be embedded into a png, if so, it should be done in a chunk with the name: "ndSf". (capitalization matters.)
+    Note 2: All data fields should be formatted in little endian.
+            arrays (tables?) should be formatted as data 0 > 1 > 2 > 3. (though individual entries in the array should still be little endian.)
+
+
+Header:
+    Note: Header should remain uncompressed.
+
+5 bytes - magic number ---- should always be "NTRFD". (maybe we'll add TWLFD in the future if any key dsi specific quirks are discovered?)
+2 bytes - version --------- check main.h for CUR_FD_REV define.
+1 byte - compressiontype -- currently unused, should always be set to 0. (uncompressed)
+
+
+Global Variables:
+    Should be saved when registers are latched. (ie. right before rendering.)
+
+2 bytes - disp3dcnt
+16 bytes - edge colors
+1 byte - alpha test ref
+4 bytes - clear color
+4 bytes - clear depth/offset (stored in one variable)
+4 bytes - fog color
+2 bytes - fog offset
+32 bytes - fog table
+64 bytes - toon table
+
+
+Initial State Variables:
+    Should be saved before the first command in a frame is sent.
+    (Should we only define the used bits of the command, or the full 32 bits?)
+
+2 bytes - zero dot display
+4 bytes - polygon attributes
+4 bytes - polygon attributes unset
+4 bytes - vertex color
+4 bytes - viewport
+64 bytes - projection stack
+2048 bytes - position stack
+2048 bytes - vector stack
+64 bytes - texture stack
+64 bytes - projection mtx
+64 bytes - position mtx
+64 bytes - vector mtx
+64 bytes - texture mtx
+4 bytes - matrix mode
+4 bytes - polygon
+4 bytes - vertex xy
+2 bytes - vertex z
+4 bytes - texture coordinates
+4 bytes - texture parameters
+4 bytes - texture palette
+4 bytes - diffuse/ambient
+4 bytes - specular/emissive
+128 bytes - shininess table
+16 bytes - light vectors
+16 bytes - light colors
+4 bytes - swap buffers params
+7 bytes - vram control regs - only 7 are actually saved/loaded/used. banks h and i are ignored
+
+
+Vram State:
+    (Up to) 608 KiB of vram state
+    Note: vram state is ONLY saved/loaded for ACTIVE vram banks that're being used for 3d textures/texture palettes
+          (ie. Last bit of vramcnt must be set and the value of the mst must be 3).
+          (Additionally banks H and I are ignored due to not being allocatable to the 3d engine).
+
+
+Param/Cmd Counts:
+
+4 bytes - number of cmds submitted
+4 bytes - number of params submitted
+
+Cmd/Param Data:
+    only store a maximum of 500KB of param/cmd data
+    all cmds should be stored in one consecutive block followed by a block of param data
+    nops and vec/box tests should not be added to any of these trackers
+    id 0x72 is repurposed to store zero dot disp reg writes
+
+1 byte per - cmd
+4 bytes per - param

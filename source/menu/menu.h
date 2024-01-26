@@ -80,9 +80,9 @@ struct MenuEntry
     u32* Var;
     u32 VarFrag; // the part of the var that's actually incremented
     u16 SubType;
+    u16 Mask;
     u8 Type;
     u8 Shift;
-    u8 Mask;
     u8 AddrOffs;
 };
 

@@ -34,7 +34,7 @@ enum Cmd_IDs
     Vtx10,
     VtxXY,
     VtxXZ,
-    VTXYZ,
+    VtxYZ,
     VtxDiff,
     PolyAttr,
     TexParam,

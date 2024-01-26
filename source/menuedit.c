@@ -3,6 +3,16 @@
 
 
 
+void inputFogOffset(u32 var, __attribute__((unused)) u8 offset)
+{
+    GFX_FOG_OFFSET = var;
+}
+
+void inputClearDepth(u32 var, u8 offset)
+{
+    (&GFX_CLEAR_DEPTH)[offset] = var;
+}
+
 void inputClearColor(u32 var, __attribute__((unused)) u8 offset)
 {
     GFX_CLEAR_COLOR = var;
@@ -21,6 +31,22 @@ void inputEdgeColor(u32 var, u8 offset)
 void input3DDispCnt(u32 var, __attribute__((unused)) u8 offset)
 {
     GFX_CONTROL = var;
+}
+
+void menuEditGX()
+{
+    struct MenuEntry* entries = calloc(numcmds, sizeof(struct MenuEntry));
+    for (u32 i = 0; i < numcmds; i++)
+        entries[i].String = str_cmds[cmd[i]];
+
+    u8* headers[] =
+    {
+        str_sub_gx,
+        NULL,
+    };
+
+    s32 cursor = 0;
+    menuInputs((struct MenuDat){&cursor, headers, entries, numcmds, InputsCommon});
 }
 
 void menuClearColor()
@@ -190,7 +216,7 @@ void menu3DDispCnt()
     struct MenuEntry entries[] =
     {
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[0],
             .Values = str_state,
             .Var = &var,
@@ -199,7 +225,7 @@ void menu3DDispCnt()
             .Mask = 0x1,
         },
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[1],
             .Values = str_shading,
             .Var = &var,
@@ -208,7 +234,7 @@ void menu3DDispCnt()
             .Mask = 0x1,
         },
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[2],
             .Values = str_state,
             .Var = &var,
@@ -217,7 +243,7 @@ void menu3DDispCnt()
             .Mask = 0x1,
         },
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[3],
             .Values = str_state,
             .Var = &var,
@@ -226,7 +252,7 @@ void menu3DDispCnt()
             .Mask = 0x1,
         },
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[4],
             .Values = str_state,
             .Var = &var,
@@ -235,7 +261,7 @@ void menu3DDispCnt()
             .Mask = 0x1,
         },
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[5],
             .Values = str_state,
             .Var = &var,
@@ -244,7 +270,7 @@ void menu3DDispCnt()
             .Mask = 0x1,
         },
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[6],
             .Values = str_fogmode,
             .Var = &var,
@@ -253,7 +279,7 @@ void menu3DDispCnt()
             .Mask = 0x1,
         },
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[7],
             .Values = str_state,
             .Var = &var,
@@ -262,7 +288,7 @@ void menu3DDispCnt()
             .Mask = 0x1,
         },
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[8],
             .Var = &var,
             .Type = Entry_Var,
@@ -270,7 +296,7 @@ void menu3DDispCnt()
             .Mask = 0xF,
         },
         {
-            .Addr = &input3DDispCnt,
+            .Addr = input3DDispCnt,
             .String = str_3ddispcnt[9],
             .Values = str_rearplane,
             .Var = &var,
@@ -289,6 +315,7 @@ void menu3DDispCnt()
 void menuEditGlobals()
 {
     u32 varat = alphatest;
+    u32 varofs = fogoffset;
     struct MenuEntry entries[] =
     {
         {
@@ -311,16 +338,41 @@ void menuEditGlobals()
             .Type = Entry_Button,
         },
         {
+            .Addr = inputClearDepth,
+            .AddrOffs = 0,
             .String = str_opt_cleardepth,
-            .Type = Entry_Button,
+            .Type = Entry_Var,
+            .Var = &cleardepoff,
+            .Mask = 0x7FFF,
         },
         {
-            .String = str_opt_clearoffset,
-            .Type = Entry_Button,
+            .Addr = inputClearDepth,
+            .AddrOffs = 1,
+            .String = str_opt_clearoffsetx,
+            .Type = Entry_Var,
+            .Var = &cleardepoff,
+            .Mask = 0xFF,
+            .Shift = 16,
+        },
+        {
+            .Addr = inputClearDepth,
+            .AddrOffs = 1,
+            .String = str_opt_clearoffsety,
+            .Type = Entry_Var,
+            .Var = &cleardepoff,
+            .Mask = 0xFF,
+            .Shift = 24,
         },
         {
             .String = str_opt_fogcolor,
             .Type = Entry_Button,
+        },
+        {
+            .Addr = inputFogOffset,
+            .String = str_opt_fogoffset,
+            .Type = Entry_Var,
+            .Var = &varofs,
+            .Mask = 0x7FFF,
         },
         {
             .String = str_opt_fogtable,
@@ -354,18 +406,18 @@ void menuEditGlobals()
             case 3: // clear color
                 menuClearColor();
                 break;
-            case 4: // clear depth
+            case 7: // fog color
+                //menuFogColor();
                 break;
-            case 5: // clear offset
+            case 9: // fog table
+                //menuFogTable();
                 break;
-            case 6: // fog color
-                break;
-            case 7: // fog table
-                break;
-            case 8: // toon table
+            case 10: // toon table
+                //menuToonTable();
                 break;
             case Ret_Exit: // exit
                 alphatest = varat;
+                fogoffset = varofs;
                 return;
         }
     }
@@ -408,6 +460,7 @@ void menuEditVars()
             case 1: // initial state vars
                 break;
             case 2: // 3d gfx commands
+                menuEditGX();
                 break;
             case Ret_Exit: // exit
                 return;

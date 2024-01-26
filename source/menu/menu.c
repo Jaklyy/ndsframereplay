@@ -379,7 +379,7 @@ u32 menuInputs(struct MenuDat m)
         }
         if (!m.Inputs.DisableReset && MENU_RESET & keys)
         {
-
+            // TODO
         }
         if (!m.Inputs.DisableExit && MENU_BACK & keys)
         {
@@ -390,3 +390,83 @@ u32 menuInputs(struct MenuDat m)
     #undef ENTRY
     #endif
 }
+
+/*void menuColor(u8* header, u8* string, u16* colorvar, u16 numcolors)
+{
+    u8* headers[] = 
+    {
+        header,
+        NULL,
+    };
+    struct MenuEntry entries* = malloc(numcolors);
+    memset(entries, 0, sizeof(struct MenuEntry) * numcolors);
+
+    for (int i = 0; i < numcolors; i++)
+    {
+        u8 color = 0xC0 | (i+1);
+        entries[i].String = malloc(31);
+        entries[i].Type = Entry_Button;
+        sprintf(entries[i].String, "%s %i: \xFF%c\n", string, i, color);
+    }
+
+    u8* headers2[] = 
+    {
+        str_sub_color,
+        NULL,
+    };
+
+    s32 cursor = 0;
+    while (true)
+    {
+        for (int i = 0; i < numcolors; i++)
+            BG_PALETTE_SUB[(PALETTE_SIZE*15)+1+i] = colorvar[i];
+
+        u32 sel = menuInputs((struct MenuDat){&cursor, headers, entries, ARRSIZE(entries), InputsCommon});
+
+        if (sel == Ret_Exit) break;
+        else
+        {
+
+            u32 var = edgecolor[sel];
+            struct MenuEntry entries2[] =
+            {
+                {
+                    .Addr = inputEdgeColor,
+                    .AddrOffs = sel,
+                    .String = str_opt_r,
+                    .Type = Entry_Var,
+                    .SubType = Sub_Red,
+                    .Var = &var,
+                    .Shift = 0,
+                    .Mask = 0x1F,
+                },
+                {
+                    .Addr = inputEdgeColor,
+                    .AddrOffs = sel,
+                    .String = str_opt_g,
+                    .Type = Entry_Var,
+                    .SubType = Sub_Green,
+                    .Var = &var,
+                    .Shift = 5,
+                    .Mask = 0x1F,
+                },
+                {
+                    .Addr = inputEdgeColor,
+                    .AddrOffs = sel,
+                    .String = str_opt_b,
+                    .Type = Entry_Var,
+                    .SubType = Sub_Blue,
+                    .Var = &var,
+                    .Shift = 10,
+                    .Mask = 0x1F,
+                },
+            };
+            u32 cursor2 = 0;
+            menuInputs((struct MenuDat){&cursor2, headers2, entries2, ARRSIZE(entries2), InputsCommon});
+            edgecolor[sel] = var;
+        }
+    }
+
+    for (int i = 0; i < 8; i++)
+        free(entries[i].String);
+}*/

@@ -17,6 +17,7 @@ u8 str_sub_3ddispcnt[] =    "EDIT 3DDISPCNT:\n";
 u8 str_sub_edgecolor[] =    "EDIT EDGE COLORS:\n";
 u8 str_sub_clearcolor[] =   "EDIT CLEAR COLOR: \xFF\xC1\n";
 u8 str_sub_color[] =        "EDIT COLOR: \xFF\xC1\n";
+u8 str_sub_gx[] =           "VIEW GX:\n";
 
 
 // menu options
@@ -33,7 +34,7 @@ u8 str_opt_quit[] =         "VIBE CHECK\n";
 
 // edit menu
 u8 str_opt_globalvars[] =   "GLOBAL VARS\n";
-u8 str_opt_initstate[] =    "INITAL STATE\n";
+u8 str_opt_initstate[] =    "INITAL STATE (TODO)\n";
 u8 str_opt_cmdlist[] =      "COMMAND LIST\n";
 
 // global vars submenu
@@ -41,11 +42,13 @@ u8 str_opt_3ddispcnt[] =    "3DDISPCNT\n";
 u8 str_opt_edgecolor[] =    "EDGE COLOR\n";
 u8 str_opt_alphatest[] =    "ALPHA TEST:";
 u8 str_opt_clearcolor[] =   "CLEAR COLOR\n";
-u8 str_opt_cleardepth[] =   "CLEAR DEPTH\n";
-u8 str_opt_clearoffset[] =  "CLEAR OFFSET\n";
-u8 str_opt_fogcolor[] =     "FOG COLOR\n";
-u8 str_opt_fogtable[] =     "FOG TABLE\n";
-u8 str_opt_toontable[] =    "TOON TABLE\n";
+u8 str_opt_cleardepth[] =   "CLEAR DEPTH:";
+u8 str_opt_clearoffsetx[] = "CLEAR OFFSET X:";
+u8 str_opt_clearoffsety[] = "CLEAR OFFSET Y:";
+u8 str_opt_fogcolor[] =     "FOG COLOR (TODO)\n";
+u8 str_opt_fogoffset[] =    "FOG OFFSET:";
+u8 str_opt_fogtable[] =     "FOG TABLE (TODO)\n";
+u8 str_opt_toontable[] =    "TOON TABLE (TODO)\n";
 
 u8 str_opt_r[] =            "R:";
 u8 str_opt_g[] =            "G:";
@@ -69,8 +72,9 @@ u8 str_hint_subt[] =        "MINUS 1\n";
 u8 str_hint_add[] =         "PLUS 1\n";
 u8 str_hint_add10[] =       "PLUS 10\n";
 u8 str_hint_subt10[] =      "MINUS 10\n";
-u8 str_hint_reset[] =       "RESET\n";
+u8 str_hint_reset[] =       "RESET (TODO)\n";
 u8 str_hint_reload[] =      "RELOAD\n";
+
 
 // menu errors
 u8 str_err_dir[] =          "\xF1""ERROR: UNABLE TO OPEN DIRECTORY\nPLEASE TURN OFF THE SYSTEM\n";
@@ -82,51 +86,53 @@ u8 str_err_headerfail[] =   "\xF1""ERROR: FILE HEADER INVALID\n";
 u8 str_err_oldver[] =       "\xF1""ERROR: FILE TOO OLD TO LOAD\n";
 u8 str_err_timetravel[] =   "\xF1""ERROR: FILE FROM FUTURE\nCHECK FOR A NEW VERSION\n";
 
+
 // stuff i haven't put anywhere yet-
 u8 str_gx[] =               "GX: 0x";
 u8 str_cmd[] =              "CMD: ";
 
 u8 str_null[] =             "";
 
+
 // lookup table for graphics command names
-u8 str_cmds[256][10] =
+u8* str_cmds[256] =
 {
-[Mode] =       "MTX MODE",
-[Push] =       "PUSH",
-[Pop] =        "POP",
-[Store] =      "STORE",
-[Restore] =    "RESTORE",
-[Identity] =   "IDENTITY",
-[Load4x4] =    "LOAD 4x4",
-[Load4x3] =    "LOAD 4X3",
-[Mult4x4] =    "MULT 4X4",
-[Mult4x3] =    "MULT 4X3",
-[Mult3x3] =    "MULT 3X3",
-[Scale] =      "SCALE",
-[Trans] =      "TRANS",
-[Color] =      "VTX COL",
-[Normal] =     "NORMAL",
-[Texcoord] =   "TEXCOORD",
-[Vtx16] =      "VTX 16",
-[Vtx10] =      "VTX 10",
-[VtxXY] =      "VTX XY",
-[VtxXZ] =      "VTX XZ",
-[VTXYZ] =      "VTX YZ",
-[VtxDiff] =    "VTX DIFF",
-[PolyAttr] =   "POLY ATR",
-[TexParam] =   "TEXPARAM",
-[TexPalette] = "TEX PAL",
-[DiffAmbi] =   "DIFFAMBI",
-[SpecEmis] =   "SPECEMIS",
-[LightVec] =   "LIGHTVEC",
-[LightColor] = "LIGHTCOL",
-[Shininess] =  "SHININES",
-[BeginPoly] =  "BGN POLY",
-[EndPoly] =    "END POLY",
-[SwapBuffer] = "SWP BUFF",
-[Viewport] =   "VIEWPORT",
-[PosTest] =    "POS TEST",
-[ZDotDisp] =   "0DOTDISP",
+[Mode] =       "MTX MODE""\n",
+[Push] =       "PUSH""\n",
+[Pop] =        "POP""\n",
+[Store] =      "STORE""\n",
+[Restore] =    "RESTORE""\n",
+[Identity] =   "IDENTITY""\n",
+[Load4x4] =    "LOAD 4x4""\n",
+[Load4x3] =    "LOAD 4X3""\n",
+[Mult4x4] =    "MULT 4X4""\n",
+[Mult4x3] =    "MULT 4X3""\n",
+[Mult3x3] =    "MULT 3X3""\n",
+[Scale] =      "SCALE""\n",
+[Trans] =      "TRANS""\n",
+[Color] =      "VTX COL""\n",
+[Normal] =     "NORMAL""\n",
+[Texcoord] =   "TEXCOORD""\n",
+[Vtx16] =      "VTX 16""\n",
+[Vtx10] =      "VTX 10""\n",
+[VtxXY] =      "VTX XY""\n",
+[VtxXZ] =      "VTX XZ""\n",
+[VtxYZ] =      "VTX YZ""\n",
+[VtxDiff] =    "VTX DIFF""\n",
+[PolyAttr] =   "POLY ATR""\n",
+[TexParam] =   "TEXPARAM""\n",
+[TexPalette] = "TEX PAL""\n",
+[DiffAmbi] =   "DIFFAMBI""\n",
+[SpecEmis] =   "SPECEMIS""\n",
+[LightVec] =   "LIGHTVEC""\n",
+[LightColor] = "LIGHTCOL""\n",
+[Shininess] =  "SHININES""\n",
+[BeginPoly] =  "BGN POLY""\n",
+[EndPoly] =    "END POLY""\n",
+[SwapBuffer] = "SWP BUFF""\n",
+[Viewport] =   "VIEWPORT""\n",
+[PosTest] =    "POS TEST""\n",
+[ZDotDisp] =   "0DOTDISP""\n",
 };
 
 u8 str_matrix[][8] =

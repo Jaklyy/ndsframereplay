@@ -218,6 +218,10 @@ void initVram(FILE* file)
     // nab vramcontrols
     fread(vramcontrol, 1, 7, file);
 
+    for (int i = 0; i < 7; i++)
+    {
+        (&VRAM_A_CR)[i] = 0;
+    }
     // init vram banks
     // ignore H & I because irrelevant to 3d gfx
     // todo: avoid activating the first 4 banks if unneeded?
@@ -406,9 +410,9 @@ u32 runGX(bool finish)
     for (u32 i = 0, j = 0; i < numcmds; i++)
     {   
         // handle zerodotdisp reg writes
-        if (cmd[i] == 255)
+        if (cmd[i] == ZDotDisp)
             GFX_CUTOFF_DEPTH = param[j++];
-        else if (finish || cmd[i] != 0x50)
+        else if (finish || cmd[i] != SwapBuffer)
         {
             vu32* finaladdr = (vu32*)((u32)&GFX_FIFO + (cmd[i] << 2));
             if (paramcount[cmd[i]] != 0)
@@ -421,10 +425,10 @@ u32 runGX(bool finish)
 
         if (!finish)
         {
-            if (cmd[i] == 0x29) currpolyattrunset = param[j-1]; // polyattr
-            else if (cmd[i] == 0x40) currpolyattr = currpolyattrunset; // begin poly
-            else if (cmd[i] == 0x2A) currtexparam = param[j-1]; // texparam
-            else if (cmd[i] >= 0x23 && cmd[i] <= 0x28) // vtx cmds
+            if (cmd[i] == PolyAttr) currpolyattrunset = param[j-1]; // polyattr
+            else if (cmd[i] == BeginPoly) currpolyattr = currpolyattrunset; // begin poly
+            else if (cmd[i] == TexParam) currtexparam = param[j-1]; // texparam
+            else if (cmd[i] >= Vtx16 && cmd[i] <= VtxYZ) // vtx cmds
             {
                 // create a mask of translucent polygon ids
                 u8 texmode = ((currtexparam >> 26) & 0x7); 

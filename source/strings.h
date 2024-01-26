@@ -18,6 +18,8 @@ extern u8 str_sub_3ddispcnt[];
 extern u8 str_sub_edgecolor[];
 extern u8 str_sub_clearcolor[];
 extern u8 str_sub_color[];
+extern u8 str_sub_gx[];
+
 
 // menu options
 // directory menu
@@ -42,8 +44,10 @@ extern u8 str_opt_edgecolor[];
 extern u8 str_opt_alphatest[];
 extern u8 str_opt_clearcolor[];
 extern u8 str_opt_cleardepth[];
-extern u8 str_opt_clearoffset[];
+extern u8 str_opt_clearoffsetx[];
+extern u8 str_opt_clearoffsety[];
 extern u8 str_opt_fogcolor[];
+extern u8 str_opt_fogoffset[];
 extern u8 str_opt_fogtable[];
 extern u8 str_opt_toontable[];
 
@@ -72,6 +76,7 @@ extern u8 str_hint_subt10[];
 extern u8 str_hint_reset[];
 extern u8 str_hint_reload[];
 
+
 // menu errors
 extern u8 str_err_dir[];
 extern u8 str_err_file[];
@@ -82,8 +87,10 @@ extern u8 str_err_headerfail[];
 extern u8 str_err_oldver[];
 extern u8 str_err_timetravel[];
 
+
 // misc
 extern u8 str_edgecolor[];
+
 
 // stuff i haven't put anywhere yet-
 extern u8 str_gx[];
@@ -91,8 +98,9 @@ extern u8 str_cmd[];
 
 extern u8 str_null[];
 
+
 // lookup tables
-extern u8 str_cmds[256][10];
+extern u8* str_cmds[256];
 
 extern u8 str_matrix[][8];
 
