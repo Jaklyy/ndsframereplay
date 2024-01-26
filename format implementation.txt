@@ -76,6 +76,7 @@ Cmd/Param Data:
     all cmds should be stored in one consecutive block followed by a block of param data
     nops and vec/box tests should not be added to any of these trackers
     id 0x72 is repurposed to store zero dot disp reg writes
+    Packed cmds/params are split into separate commands.
 
 1 byte per - cmd
 4 bytes per - param
